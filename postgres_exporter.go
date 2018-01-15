@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 
+	// _ "net/http/pprof"
+
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
