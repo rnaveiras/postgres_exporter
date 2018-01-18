@@ -12,22 +12,21 @@ const (
 	statActivitySubsystem = "stat_activity"
 	// Scrape query
 	statActivityQuery = `
-						WITH states AS (
-						  SELECT datname
-							   , unnest(array['active',
-											  'idle',
-											  'idle in transaction',
-											  'idle in transaction (aborted)',
-											  'fastpath function call',
-											  'disabled']) AS state FROM pg_database
-						)
-						SELECT datname, state, COALESCE(count, 0) as count
-						  FROM states LEFT JOIN (
-							   SELECT datname, state, count(*)
-						       FROM pg_stat_activity GROUP BY datname, state
-							   ) AS activity
-						USING (datname, state);
-						`
+WITH states AS (
+  SELECT datname
+	   , unnest(array['active',
+					  'idle',
+					  'idle in transaction',
+					  'idle in transaction (aborted)',
+					  'fastpath function call',
+					  'disabled']) AS state FROM pg_database
+)
+SELECT datname, state, COALESCE(count, 0) as count
+  FROM states LEFT JOIN (
+	   SELECT datname, state, count(*)
+       FROM pg_stat_activity GROUP BY datname, state
+	   ) AS activity
+USING (datname, state) /*postgres_exporter*/`
 )
 
 type statActivityCollector struct {

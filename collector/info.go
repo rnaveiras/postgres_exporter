@@ -9,8 +9,8 @@ import (
 
 const (
 	// Scrape query
-	infoQuery = `SHOW server_version`
-	upQuery   = `SELECT 1`
+	infoQuery = `SHOW server_version /*postgres_exporter*/`
+	upQuery   = `SELECT 1 /*postgres_exporter*/`
 )
 
 type infoCollector struct {
