@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"os"
 
 	// _ "net/http/pprof"
 
@@ -19,10 +18,10 @@ import (
 )
 
 var (
-	dsn           string
 	db            *sql.DB
 	listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default(":9187").String()
 	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+	dataSource    = kingpin.Flag("db.data-source", "libpq compatible data source").Envar("DATA_SOURCE_NAME").Default("postgresql:///postgres?host=/var/run/postgresql").String()
 )
 
 func init() {
@@ -72,18 +71,14 @@ func main() {
 	log.Infoln("Starting postgres_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
-	dsn = os.Getenv("DATA_SOURCE_NAME")
-	if len(dsn) == 0 {
-		log.Fatal("missing DATA_SOURCE_NAME")
-	}
-
-	_, err := pq.ParseURL(dsn)
+	dsn, err := pq.ParseURL(*dataSource)
 	if err != nil {
 		log.Fatal("parse dsn:", err)
 	}
+	log.Debugln("connection string: ", dsn)
 
 	// Open Postgres connection
-	db, err = sql.Open("postgres", dsn)
+	db, err = sql.Open("postgres", *dataSource)
 	log.Infoln("Established a new database connection.")
 
 	if err != nil {
