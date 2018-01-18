@@ -1,0 +1,13 @@
+---
+builds:
+  - binary: postgres_exporter
+    flags: -a -tags netgo
+    ldflags: >
+      -X github.com/rnaveiras/postgres_exporter/vendor/github.com/prometheus/common/version.Version={{.Version}}
+      -X github.com/rnaveiras/postgres_exporter/vendor/github.com/prometheus/common/version.Revision={{.Commit}}
+      -X github.com/rnaveiras/postgres_exporter/vendor/github.com/prometheus/common/version.BuildDate={{.Date}}
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
