@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,7 +52,7 @@ func registerCollector(collector string, isDefaultEnabled bool, factory func() (
 		helpDefaultState = "disabled"
 	}
 
-	flagName := fmt.Sprintf("collector.%s", collector)
+	flagName := fmt.Sprintf("collector.%s", strings.Replace(collector, "_", "-", -1))
 	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", collector, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
