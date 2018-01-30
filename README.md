@@ -27,6 +27,7 @@ Prometheus exporter for PostgreSQL server metrics.
 | postgres_stat_database_xact_rollback_total | Number of transactions in this database that have been rolled back | datname |
 | postgres_stat_activity_connections | Number of current connections in their current state | datname, state |
 | postgres_up | Whether the Postgres server is up | |
+| postgres_in_recovery | Whether Postgres is in recovery | |
 
 ### Running
 
