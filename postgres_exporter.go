@@ -8,7 +8,8 @@ import (
 
 	// _ "net/http/pprof"
 
-	"github.com/lib/pq"
+	"github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/stdlib"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -17,11 +18,23 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+const (
+	defaultDSN string = "application_name=postgres_exporter user=postgres host=/var/run/postgresql"
+)
+
 var (
 	db            *sql.DB
-	listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default(":9187").String()
-	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
-	dataSource    = kingpin.Flag("db.data-source", "libpq compatible data source").Envar("DATA_SOURCE_NAME").Default("postgresql:///postgres?host=/var/run/postgresql").String()
+	listenAddress = kingpin.Flag(
+		"web.listen-address",
+		"Address on which to expose metrics and web interface.",
+	).Default(":9187").String()
+	metricsPath = kingpin.Flag(
+		"web.telemetry-path",
+		"Path under which to expose metrics.",
+	).Default("/metrics").String()
+	dataSource = kingpin.Flag(
+		"db.data-source", "libpq compatible data source",
+	).Envar("DATA_SOURCE_NAME").Default(defaultDSN).String()
 )
 
 func init() {
@@ -71,26 +84,31 @@ func main() {
 	log.Infoln("Starting postgres_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
-	dsn, err := pq.ParseURL(*dataSource)
+	connConfig, err := pgx.ParseConnectionString(*dataSource)
 	if err != nil {
 		log.Fatal("parse dsn:", err)
 	}
-	log.Debugln("connection string: ", dsn)
+
+	log.Infof("DSN: user=%s host=%s dbname=%s",
+		connConfig.User,
+		connConfig.Host,
+		connConfig.Database)
 
 	// Open Postgres connection
-	db, err = sql.Open("postgres", *dataSource)
-	log.Infoln("Established a new database connection.")
-
+	db, err = sql.Open("pgx", *dataSource)
 	if err != nil {
 		log.Errorln("Error openning connection to database:", err)
+		//TODO: handle retries
 	}
+
+	defer db.Close()
+	log.Infoln("Established a new database connection.")
 
 	// By design exporter should use maximum one connection per scrape
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	// Reuse the same connection forever
 	db.SetConnMaxLifetime(0)
-	defer db.Close()
 
 	ctx := context.Background()
 	// This instance is only used to check collector creation and logging.
