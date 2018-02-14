@@ -2,6 +2,8 @@
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.1.2...master)
 
+* Replaced lib/pq with jackc/pgx
+  ([#6](https://github.com/rnaveiras/postgres_exporter/pull/6))
 * Expose locks from `pg_locks` ([#5](https://github.com/rnaveiras/postgres_exporter/pull/5))
 
 ## Version 0.1.2 / 2018-01-18
