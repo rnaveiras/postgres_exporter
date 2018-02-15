@@ -28,6 +28,8 @@ Prometheus exporter for PostgreSQL server metrics.
 | postgres_stat_activity_connections | Number of current connections in their current state | datname, state |
 | postgres_up | Whether the Postgres server is up | |
 | postgres_in_recovery | Whether Postgres is in recovery | |
+| postgres_stat_activity_oldest_xact_timestamp | Oldest transaction timestamp (epoch) | |
+| postgres_stat_activity_oldest_backend_timestamp| Oldest backend timestamp (epoch) |
 
 ### Running
 
