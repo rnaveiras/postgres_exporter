@@ -31,10 +31,13 @@ SELECT datname, state, COALESCE(count, 0) as count
 USING (datname, state) /*postgres_exporter*/`
 
 	// Oldest transaction timestamp
+	// ignore when backend_xid is null, so excludes autovacuumn, autoanalyze
+	// and other maintenance tasks
 	statActivityCollectorXactQuery = `
-SELECT min(xact_start)
+SELECT COALESCE(min(xact_start), current_timestamp) AS xact_start
   FROM pg_stat_activity
-  WHERE state IN ('idle in transaction', 'active') /*postgres_exporter*/`
+  WHERE state IN ('idle in transaction', 'active')
+  AND backend_xid IS NOT NULL /*postgres_exporter*/`
 
 	// Oldest backend timestamp
 	statActivityCollectorBackendStartQuery = `select min(backend_start) FROM pg_stat_activity /*postgres_exporter*/`
