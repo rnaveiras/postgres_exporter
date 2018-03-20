@@ -1,5 +1,8 @@
-## Version 0.1.4 / Unreleased
+## Version 0.1.4 / 2018-03-20
 
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.1.3...v0.1.4)
+
+* Improve `postgres_stat_activity_oldest_xact_timestamp` ([#9](https://github.com/rnaveiras/postgres_exporter/pull/9))
 
 ## Version 0.1.3 / 2018-03-01
 
