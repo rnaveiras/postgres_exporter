@@ -40,13 +40,19 @@ SELECT COALESCE(min(xact_start), current_timestamp) AS xact_start
   AND backend_xid IS NOT NULL /*postgres_exporter*/`
 
 	// Oldest backend timestamp
-	statActivityCollectorBackendStartQuery = `select min(backend_start) FROM pg_stat_activity /*postgres_exporter*/`
+	statActivityCollectorBackendStartQuery = `SELECT min(backend_start) FROM pg_stat_activity /*postgres_exporter*/`
+
+	// Oldest query in running state (long queries)"
+	statActivityCollectorActiveQuery = `
+SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), min(query_start)))
+  FROM pg_stat_activity /*postgres_exporter*/`
 )
 
 type statActivityCollector struct {
 	connections *prometheus.Desc
 	xact        *prometheus.Desc
 	backend     *prometheus.Desc
+	activeQuery *prometheus.Desc
 }
 
 func init() {
@@ -71,6 +77,12 @@ func NewStatActivityCollector() (Collector, error) {
 		backend: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, statActivitySubsystem, "oldest_backend_timestamp"),
 			"The oldest backend started timestamp",
+			nil,
+			nil,
+		),
+		activeQuery: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, statActivitySubsystem, "oldest_query_active_seconds"),
+			"The oldest query in state running (long query)",
 			nil,
 			nil,
 		),
@@ -116,6 +128,15 @@ func (c *statActivityCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 
 	// postgres_stat_activity_oldest_backend_timestamp
 	ch <- prometheus.MustNewConstMetric(c.backend, prometheus.GaugeValue, float64(oldestBackend.UTC().Unix()))
+
+	var duration float64
+	err = db.QueryRowContext(ctx, statActivityCollectorActiveQuery).Scan(&duration)
+	if err != nil {
+		return err
+	}
+
+	// postgres_stat_activty_oldest_query_active_seconds
+	ch <- prometheus.MustNewConstMetric(c.activeQuery, prometheus.GaugeValue, duration)
 
 	return nil
 }

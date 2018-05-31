@@ -30,8 +30,12 @@ Prometheus exporter for PostgreSQL server metrics.
 | postgres_in_recovery | Whether Postgres is in recovery | |
 | postgres_stat_activity_oldest_xact_timestamp | Oldest transaction timestamp (epoch) | |
 | postgres_stat_activity_oldest_backend_timestamp| Oldest backend timestamp (epoch) |
+| postgres_stat_activity_oldest_query_active_seconds| Oldest query in running
+state |
 
-### Running
+### Run
 
-export DATA_SOURCE_NAME="postgres://localhost:5432/postgres"
-./postgres_exporter
+```
+./postgres_exporter \
+    --db.data-source="application_name=postgres_exporter user=postgres host=/var/run/postgresql"
+```
