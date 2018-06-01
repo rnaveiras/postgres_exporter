@@ -22,10 +22,6 @@
 
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/lib/pq"
-
-[[constraint]]
   name = "github.com/prometheus/client_golang"
   version = "0.8.0"
 
