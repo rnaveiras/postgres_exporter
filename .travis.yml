@@ -1,0 +1,13 @@
+---
+language: go
+go:
+  - "1.10"
+
+jobs:
+  include:
+    - stage: build
+      script: make
+    - stage: dep-ensure
+      script:
+        - go get -u github.com/golang/dep/cmd/dep
+        - dep ensure -v -no-vendor -dry-run
