@@ -42,5 +42,5 @@ Prometheus exporter for PostgreSQL server metrics.
 
 ```
 ./postgres_exporter \
-    --db.data-source="application_name=postgres_exporter user=postgres host=/var/run/postgresql"
+    --db.data-source="user=postgres host=/var/run/postgresql"
 ```

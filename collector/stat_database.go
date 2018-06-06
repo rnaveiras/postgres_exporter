@@ -13,7 +13,7 @@ const (
 	// Scrape query
 	statDatabaseQuery = `
 SELECT datname
-     , numbackends::float,
+     , numbackends::float
      , tup_returned::float
      , tup_fetched::float
      , tup_inserted::float

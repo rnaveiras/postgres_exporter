@@ -14,7 +14,7 @@ const (
 SELECT datname
      , locktype
      , mode
-	 , granted
+     , granted
      , count(*)::float
   FROM pg_locks
   JOIN pg_database ON pg_locks.database=pg_database.oid

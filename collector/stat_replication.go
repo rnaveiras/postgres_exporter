@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"net"
 
 	"github.com/jackc/pgx"
 	"github.com/prometheus/client_golang/prometheus"
@@ -48,7 +49,8 @@ func (c *statReplicationCollector) Update(ctx context.Context, db *pgx.Conn, ch 
 	}
 	defer rows.Close()
 
-	var applicationName, clientAddr, state, syncState string
+	var applicationName, state, syncState string
+	var clientAddr net.IP
 	var pgXlogLocationDiff float64
 
 	for rows.Next() {
@@ -66,7 +68,7 @@ func (c *statReplicationCollector) Update(ctx context.Context, db *pgx.Conn, ch 
 			prometheus.GaugeValue,
 			pgXlogLocationDiff,
 			applicationName,
-			clientAddr,
+			clientAddr.String(),
 			state,
 			syncState)
 	}
