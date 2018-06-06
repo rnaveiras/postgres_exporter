@@ -2,7 +2,7 @@
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.1.4...master)
 
-* Add `oldest_query_active_seconds` metric ([#10](https://github.com/rnaveiras/postgres_exporter/pull/10))
+* Add metrics oldest query and oldest snapshot ([#10](https://github.com/rnaveiras/postgres_exporter/pull/10))
 
 ## Version 0.1.4 / 2018-03-20
 

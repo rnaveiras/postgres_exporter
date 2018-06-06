@@ -28,31 +28,39 @@ SELECT datname, state, COALESCE(count, 0) as count
 	   SELECT datname, state, count(*)
        FROM pg_stat_activity GROUP BY datname, state
 	   ) AS activity
-USING (datname, state) /*postgres_exporter*/`
+ USING (datname, state) /*postgres_exporter*/`
 
 	// Oldest transaction timestamp
 	// ignore when backend_xid is null, so excludes autovacuumn, autoanalyze
 	// and other maintenance tasks
 	statActivityCollectorXactQuery = `
-SELECT COALESCE(min(xact_start), current_timestamp) AS xact_start
+SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(xact_start), current_timestamp))) AS xact_start
   FROM pg_stat_activity
-  WHERE state IN ('idle in transaction', 'active')
-  AND backend_xid IS NOT NULL /*postgres_exporter*/`
+ WHERE state IN ('idle in transaction', 'active')
+   AND backend_xid IS NOT NULL /*postgres_exporter*/`
 
 	// Oldest backend timestamp
 	statActivityCollectorBackendStartQuery = `SELECT min(backend_start) FROM pg_stat_activity /*postgres_exporter*/`
 
 	// Oldest query in running state (long queries)"
 	statActivityCollectorActiveQuery = `
-SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), min(query_start)))
-  FROM pg_stat_activity /*postgres_exporter*/`
+SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(query_start), clock_timestamp())))
+  FROM pg_stat_activity
+ WHERE state='active' /*postgres_exporter*/`
+
+	// Oldest Snapshot
+	statActivityCollectorOldestSnapshotQuery = `
+SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(query_start), clock_timestamp())))
+  FROM pg_stat_activity
+ WHERE backend_xmin IS NOT NULL /*postgres_exporter*/`
 )
 
 type statActivityCollector struct {
 	connections *prometheus.Desc
-	xact        *prometheus.Desc
 	backend     *prometheus.Desc
-	activeQuery *prometheus.Desc
+	xact        *prometheus.Desc
+	active      *prometheus.Desc
+	snapshot    *prometheus.Desc
 }
 
 func init() {
@@ -68,21 +76,27 @@ func NewStatActivityCollector() (Collector, error) {
 			[]string{"datname", "state"},
 			nil,
 		),
-		xact: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statActivitySubsystem, "oldest_xact_timestamp"),
-			"The oldest transaction started timestamp",
-			nil,
-			nil,
-		),
 		backend: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, statActivitySubsystem, "oldest_backend_timestamp"),
 			"The oldest backend started timestamp",
 			nil,
 			nil,
 		),
-		activeQuery: prometheus.NewDesc(
+		xact: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, statActivitySubsystem, "oldest_xact_seconds"),
+			"The oldest transaction (active or idle in transaction)",
+			nil,
+			nil,
+		),
+		active: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, statActivitySubsystem, "oldest_query_active_seconds"),
-			"The oldest query in state running (long query)",
+			"The oldest query in running state (long query)",
+			nil,
+			nil,
+		),
+		snapshot: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, statActivitySubsystem, "oldest_snapshot_seconds"),
+			"The oldest query snapshot",
 			nil,
 			nil,
 		),
@@ -97,7 +111,9 @@ func (c *statActivityCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 	defer rows.Close()
 
 	var datname, state string
-	var count float64
+	var count, oldestTx, oldestActive, oldestSnapshot float64
+	var oldestBackend time.Time
+
 	for rows.Next() {
 		if err := rows.Scan(&datname, &state, &count); err != nil {
 			return err
@@ -112,15 +128,6 @@ func (c *statActivityCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 		return err
 	}
 
-	var oldestTx, oldestBackend time.Time
-	err = db.QueryRowContext(ctx, statActivityCollectorXactQuery).Scan(&oldestTx)
-	if err != nil {
-		return err
-	}
-
-	// postgres_stat_activity_oldest_xact_timestamp
-	ch <- prometheus.MustNewConstMetric(c.xact, prometheus.GaugeValue, float64(oldestTx.UTC().Unix()))
-
 	err = db.QueryRowContext(ctx, statActivityCollectorBackendStartQuery).Scan(&oldestBackend)
 	if err != nil {
 		return err
@@ -129,14 +136,29 @@ func (c *statActivityCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 	// postgres_stat_activity_oldest_backend_timestamp
 	ch <- prometheus.MustNewConstMetric(c.backend, prometheus.GaugeValue, float64(oldestBackend.UTC().Unix()))
 
-	var duration float64
-	err = db.QueryRowContext(ctx, statActivityCollectorActiveQuery).Scan(&duration)
+	err = db.QueryRowContext(ctx, statActivityCollectorXactQuery).Scan(&oldestTx)
 	if err != nil {
 		return err
 	}
 
-	// postgres_stat_activty_oldest_query_active_seconds
-	ch <- prometheus.MustNewConstMetric(c.activeQuery, prometheus.GaugeValue, duration)
+	// postgres_stat_activity_oldest_xact_seconds
+	ch <- prometheus.MustNewConstMetric(c.xact, prometheus.GaugeValue, oldestTx)
+
+	err = db.QueryRowContext(ctx, statActivityCollectorActiveQuery).Scan(&oldestActive)
+	if err != nil {
+		return err
+	}
+
+	// postgres_stat_activity_oldest_query_active_seconds
+	ch <- prometheus.MustNewConstMetric(c.active, prometheus.GaugeValue, oldestActive)
+
+	err = db.QueryRowContext(ctx, statActivityCollectorOldestSnapshotQuery).Scan(&oldestSnapshot)
+	if err != nil {
+		return err
+	}
+
+	// postgres_stat_activity_oldest_snapshot_seconds
+	ch <- prometheus.MustNewConstMetric(c.snapshot, prometheus.GaugeValue, oldestSnapshot)
 
 	return nil
 }
