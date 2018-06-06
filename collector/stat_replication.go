@@ -2,8 +2,8 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
+	"github.com/jackc/pgx"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,8 +41,8 @@ func NewStatReplicationCollector() (Collector, error) {
 	}, nil
 }
 
-func (c *statReplicationCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
-	rows, err := db.QueryContext(ctx, statReplicatonLagBytes)
+func (c *statReplicationCollector) Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
+	rows, err := db.QueryEx(ctx, statReplicatonLagBytes, nil)
 	if err != nil {
 		return err
 	}

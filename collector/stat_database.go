@@ -2,8 +2,8 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 
+	"github.com/jackc/pgx"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -12,10 +12,22 @@ const (
 	statDatabaseSubsystem = "stat_database"
 	// Scrape query
 	statDatabaseQuery = `
-SELECT datname, numbackends, tup_returned, tup_fetched, tup_inserted, tup_updated,
-       tup_deleted, xact_commit, xact_rollback, blks_read, blks_hit, conflicts, deadlocks,
-       temp_files, temp_bytes
-FROM pg_stat_database /*postgres_exporter*/`
+SELECT datname
+     , numbackends::float,
+     , tup_returned::float
+     , tup_fetched::float
+     , tup_inserted::float
+     , tup_updated::float
+     , tup_deleted::float
+     , xact_commit::float
+     , xact_rollback::float
+     , blks_read::float
+     , blks_hit::float
+     , conflicts::float
+     , deadlocks::float
+     , temp_files::float
+     , temp_bytes::float
+  FROM pg_stat_database /*postgres_exporter*/`
 )
 
 type statDatabaseCollector struct {
@@ -143,8 +155,8 @@ func NewStatDatabaseCollector() (Collector, error) {
 	}, nil
 }
 
-func (c *statDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
-	rows, err := db.QueryContext(ctx, statDatabaseQuery)
+func (c *statDatabaseCollector) Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
+	rows, err := db.QueryEx(ctx, statDatabaseQuery, nil)
 	if err != nil {
 		return err
 	}
@@ -169,6 +181,10 @@ func (c *statDatabaseCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 			&deadlocks,
 			&tempFiles,
 			&tempBytes); err != nil {
+			return err
+		}
+
+		if rows.Err() != nil {
 			return err
 		}
 

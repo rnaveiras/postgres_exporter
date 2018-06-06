@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 
 	// _ "net/http/pprof"
 
 	"github.com/jackc/pgx"
-	_ "github.com/jackc/pgx/stdlib"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -19,11 +18,11 @@ import (
 )
 
 const (
-	defaultDSN string = "application_name=postgres_exporter user=postgres host=/var/run/postgresql"
+	defaultDSN string = "user=postgres host=/var/run/postgresql"
 )
 
 var (
-	db            *sql.DB
+	conn          *pgx.Conn
 	listenAddress = kingpin.Flag(
 		"web.listen-address",
 		"Address on which to expose metrics and web interface.",
@@ -45,7 +44,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	filters := r.URL.Query()["collect[]"]
 	log.Debugln("collect query:", filters)
 
-	c, err := collector.NewPostgresCollector(r.Context(), db, filters...)
+	c, err := collector.NewPostgresCollector(r.Context(), conn, filters...)
 	if err != nil {
 		log.Warnln("Couldn't create", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -89,30 +88,33 @@ func main() {
 		log.Fatal("parse dsn:", err)
 	}
 
+	connConfig.RuntimeParams = map[string]string{
+		"client_encoding":  "UTF8",
+		"application_name": "postgres_exporter",
+	}
+
 	log.Infof("DSN: user=%s host=%s dbname=%s",
 		connConfig.User,
 		connConfig.Host,
 		connConfig.Database)
 
-	// Open Postgres connection
-	db, err = sql.Open("pgx", *dataSource)
+	connConfig.LogLevel = pgx.LogLevelDebug
+
+	conn, err = pgx.Connect(connConfig)
 	if err != nil {
 		log.Errorln("Error openning connection to database:", err)
+		os.Exit(-1)
 		//TODO: handle retries
 	}
 
-	defer db.Close()
+	defer conn.Close()
+
 	log.Infoln("Established a new database connection.")
 
-	// By design exporter should use maximum one connection per scrape
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-	// Reuse the same connection forever
-	db.SetConnMaxLifetime(0)
-
 	ctx := context.Background()
-	// This instance is only used to check collector creation and logging.
-	c, err := collector.NewPostgresCollector(ctx, db)
+
+	// Only used to check collector creation and logging.
+	c, err := collector.NewPostgresCollector(ctx, conn)
 	if err != nil {
 		log.Fatalf("Couldn't create collector: %s", err)
 	}

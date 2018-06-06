@@ -2,9 +2,9 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
+	"github.com/jackc/pgx"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -25,7 +25,7 @@ WITH states AS (
 )
 SELECT datname, state, COALESCE(count, 0) as count
   FROM states LEFT JOIN (
-	   SELECT datname, state, count(*)
+	   SELECT datname, state, count(*)::float
        FROM pg_stat_activity GROUP BY datname, state
 	   ) AS activity
  USING (datname, state) /*postgres_exporter*/`
@@ -103,8 +103,8 @@ func NewStatActivityCollector() (Collector, error) {
 	}, nil
 }
 
-func (c *statActivityCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
-	rows, err := db.QueryContext(ctx, statActivityQuery)
+func (c *statActivityCollector) Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
+	rows, err := db.QueryEx(ctx, statActivityQuery, nil)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (c *statActivityCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 		return err
 	}
 
-	err = db.QueryRowContext(ctx, statActivityCollectorBackendStartQuery).Scan(&oldestBackend)
+	err = db.QueryRowEx(ctx, statActivityCollectorBackendStartQuery, nil).Scan(&oldestBackend)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (c *statActivityCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 	// postgres_stat_activity_oldest_backend_timestamp
 	ch <- prometheus.MustNewConstMetric(c.backend, prometheus.GaugeValue, float64(oldestBackend.UTC().Unix()))
 
-	err = db.QueryRowContext(ctx, statActivityCollectorXactQuery).Scan(&oldestTx)
+	err = db.QueryRowEx(ctx, statActivityCollectorXactQuery, nil).Scan(&oldestTx)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (c *statActivityCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 	// postgres_stat_activity_oldest_xact_seconds
 	ch <- prometheus.MustNewConstMetric(c.xact, prometheus.GaugeValue, oldestTx)
 
-	err = db.QueryRowContext(ctx, statActivityCollectorActiveQuery).Scan(&oldestActive)
+	err = db.QueryRowEx(ctx, statActivityCollectorActiveQuery, nil).Scan(&oldestActive)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (c *statActivityCollector) Update(ctx context.Context, db *sql.DB, ch chan<
 	// postgres_stat_activity_oldest_query_active_seconds
 	ch <- prometheus.MustNewConstMetric(c.active, prometheus.GaugeValue, oldestActive)
 
-	err = db.QueryRowContext(ctx, statActivityCollectorOldestSnapshotQuery).Scan(&oldestSnapshot)
+	err = db.QueryRowEx(ctx, statActivityCollectorOldestSnapshotQuery, nil).Scan(&oldestSnapshot)
 	if err != nil {
 		return err
 	}

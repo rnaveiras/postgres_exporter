@@ -2,9 +2,9 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"strconv"
 
+	"github.com/jackc/pgx"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -13,11 +13,12 @@ const (
 	locksQuery     = `
 SELECT datname
      , locktype
-		 , mode
-		 , granted
-		 , count(*)
-FROM pg_locks JOIN pg_database ON pg_locks.database=pg_database.oid
-GROUP BY datname, locktype, mode, granted /*postgres_exporter*/
+     , mode
+	 , granted
+     , count(*)::float
+  FROM pg_locks
+  JOIN pg_database ON pg_locks.database=pg_database.oid
+ GROUP BY datname, locktype, mode, granted /*postgres_exporter*/
 `
 )
 
@@ -41,8 +42,8 @@ func NewLocksCollector() (Collector, error) {
 	}, nil
 }
 
-func (c *locksCollector) Update(ctx context.Context, db *sql.DB, ch chan<- prometheus.Metric) error {
-	rows, err := db.QueryContext(ctx, locksQuery)
+func (c *locksCollector) Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
+	rows, err := db.QueryEx(ctx, locksQuery, nil)
 	if err != nil {
 		return err
 	}
