@@ -2,6 +2,8 @@
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.1.4...master)
 
+* Add collector `stat_replication`
+    ([#12](https://github.com/rnaveiras/postgres_exporter/pull/12))
 * Add metrics oldest query and oldest snapshot ([#10](https://github.com/rnaveiras/postgres_exporter/pull/10))
 
 ## Version 0.1.4 / 2018-03-20

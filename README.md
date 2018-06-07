@@ -4,7 +4,11 @@ Prometheus exporter for PostgreSQL server metrics.
 
 ## Collectors
 
-- TODO
+- stat_activity
+- stat_database
+- stat_replication
+- info
+- locks
 
 ## Exported Metrics
 
@@ -28,11 +32,11 @@ Prometheus exporter for PostgreSQL server metrics.
 | postgres_stat_activity_connections | Number of current connections in their current state | datname, state |
 | postgres_up | Whether the Postgres server is up | |
 | postgres_in_recovery | Whether Postgres is in recovery | |
-| postgres_stat_activity_oldest_backend_timestamp| Oldest backend timestamp (epoch) |
+| postgres_stat_activity_oldest_backend_timestamp| Oldest backend timestamp (epoch) | |
 | postgres_stat_activity_oldest_xact_seconds | Oldest transaction | |
-| postgres_stat_activity_oldest_query_active_seconds| Oldest query in running
-| postgres_stat_activity_oldest_snapshot_seconds| Oldest Snapshot
-state |
+| postgres_stat_activity_oldest_query_active_seconds| Oldest query in running state | |
+| postgres_stat_activity_oldest_snapshot_seconds | Oldest Snapshot | |
+| postgres_stat_replication_lag_bytes | Replication Lag in bytes | application_name, client_addr, state, sync_state |
 
 ### Run
 
