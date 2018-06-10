@@ -50,6 +50,9 @@ that have been performed | |
 | postgres_stat_bgwriter_buffers_backend_fsync_total | Number of times a backend had to execute its own fsync call | |
 | postgres_stat_bgwriter_buffers_allow_total | Number of buffers allocated | |
 | postgres_stat_bgwriter_stats_reset_timestamp | Time at wich these statistics were last reset | |
+| postgres_stat_archiver_archived_total | Number of WAL files that have been successfully archived | |
+| postgres_stat_archiver_failed_total   | Number of failed attempts for archiving WAL files | |
+| postgres_stat_archiveR_stats_reset_timestamp | Time at which these statistics were last reset | |
 
 ### Run
 
