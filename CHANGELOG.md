@@ -2,6 +2,8 @@
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.1.4...master)
 
+* Add collector `stat_archiver`
+    ([#15](https://github.com/rnaveiras/postgres_exporter/pull/15))
 * Add collector `stat_bgwriter`
     ([#14](https://github.com/rnaveiras/postgres_exporter/pull/14))
 * Use package `pgx` directly
