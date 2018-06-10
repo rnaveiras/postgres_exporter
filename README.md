@@ -37,6 +37,19 @@ Prometheus exporter for PostgreSQL server metrics.
 | postgres_stat_activity_oldest_query_active_seconds| Oldest query in running state | |
 | postgres_stat_activity_oldest_snapshot_seconds | Oldest Snapshot | |
 | postgres_stat_replication_lag_bytes | Replication Lag in bytes | application_name, client_addr, state, sync_state |
+| postgres_stat_bgwriter_checkpoints_timed_total | Number of scheduled
+checkpoints that have been performed | |
+| postgres_stat_bgwriter_checkpoints_req_total | Number of requested checkpoints
+that have been performed | |
+| postgres_stat_bgwriter_checkpoint_write_time_seconds_total | Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk | |
+| postgres_stat_bgwriter_checkpoint_sync_time_seconds_total | Total amount of time that has been spent in the portion of checkpoint processing where files are synchronized to disk | |
+| postgres_stat_bgwriter_buffers_checkpoint_total | Number of buffers written during checkpoints | |
+| postgres_stat_bgwriter_buffers_clean_total | Number of buffers written by the background writer | |
+| postgres_stat_bgwriter_maxwritten_clean_total | Number of times the background writter stopped a cleaning scan because it had written too many buffers | |
+| postgres_stat_bgwriter_buffers_backend_total | Number of buffers written directly  by a backend | |
+| postgres_stat_bgwriter_buffers_backend_fsync_total | Number of times a backend had to execute its own fsync call | |
+| postgres_stat_bgwriter_buffers_allow_total | Number of buffers allocated | |
+| postgres_stat_bgwriter_stats_reset_timestamp | Time at wich these statistics were last reset | |
 
 ### Run
 
