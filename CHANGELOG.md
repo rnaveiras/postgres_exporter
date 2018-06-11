@@ -1,4 +1,4 @@
-## Unreleased
+## Version 0.2.0 / 2018-06-11
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.1.4...master)
 
