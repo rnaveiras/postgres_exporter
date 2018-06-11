@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/jackc/pgx"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -44,6 +45,12 @@ var (
 	collectorState = make(map[string]*bool)
 )
 
+// Collector is the interface a collector has to implement.
+type Collector interface {
+	// Get new metrics and expose them via prometheus registry.
+	Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error
+}
+
 func registerCollector(collector string, isDefaultEnabled bool, factory func() (Collector, error)) {
 	var helpDefaultState string
 	if isDefaultEnabled {
@@ -64,13 +71,13 @@ func registerCollector(collector string, isDefaultEnabled bool, factory func() (
 // PostgresCollector implements the prometheus.Collector interface.
 type postgresCollector struct {
 	ctx        context.Context
-	Db         *pgx.Conn
+	db         *pgx.Conn
 	Collectors map[string]Collector
+	logger     log.Logger
 }
 
 // NewPostgresCollector creates a new postgresCollector
-func NewPostgresCollector(ctx context.Context, db *pgx.Conn, filters ...string) (*postgresCollector, error) {
-
+func NewPostgresCollector(ctx context.Context, db *pgx.Conn, logger log.Logger, filters ...string) (*postgresCollector, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
@@ -94,7 +101,11 @@ func NewPostgresCollector(ctx context.Context, db *pgx.Conn, filters ...string) 
 			}
 		}
 	}
-	return &postgresCollector{ctx: ctx, Db: db, Collectors: collectors}, nil
+	return &postgresCollector{
+		ctx:        ctx,
+		db:         db,
+		logger:     logger,
+		Collectors: collectors}, nil
 }
 
 // Describe implements the prometheus.Collector interface.
@@ -106,32 +117,26 @@ func (n postgresCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements the prometheus.Collector interface.
 func (n postgresCollector) Collect(ch chan<- prometheus.Metric) {
 	for name, c := range n.Collectors {
-		execute(n.ctx, name, n.Db, c, ch)
+		n.execute(name, c, ch)
 	}
 }
 
-func execute(ctx context.Context, name string, db *pgx.Conn, c Collector, ch chan<- prometheus.Metric) {
+func (n postgresCollector) execute(name string, c Collector, ch chan<- prometheus.Metric) {
 	begin := time.Now()
-	err := c.Update(ctx, db, ch)
+	err := c.Update(n.ctx, n.db, ch)
 	duration := time.Since(begin)
 	var success float64
 
 	if err != nil {
-		log.Errorf("ERROR: %s collector failed after %fs: %s", name, duration.Seconds(), err)
+		level.Debug(n.logger).Log("collector", name, "duration", duration.Seconds(), "error", err)
 		success = 0
 	} else {
-		log.Debugf("OK: %s collector succeeded after %fs.", name, duration.Seconds())
+		level.Debug(n.logger).Log("collector", name, "duration", duration.Seconds(), "event", "collector.success")
 		success = 1
 	}
 
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
-}
-
-// Collector is the interface a collector has to implement.
-type Collector interface {
-	// Get new metrics and expose them via prometheus registry.
-	Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error
 }
 
 type typedDesc struct {
