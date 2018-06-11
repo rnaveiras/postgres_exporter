@@ -5,6 +5,8 @@ Prometheus exporter for PostgreSQL server metrics.
 ## Collectors
 
 - stat_activity
+- stat_archiver
+- stat_bgwriter
 - stat_database
 - stat_replication
 - info
