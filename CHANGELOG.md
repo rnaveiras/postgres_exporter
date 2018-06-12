@@ -1,6 +1,13 @@
+## Version 0.2.1 / 2018-06-12
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.0...v0.2.1)
+
+* Don't exit during startup if database is unavailable
+    ([#16](https://github.com/rnaveiras/postgres_exporter/pull/16))
+
 ## Version 0.2.0 / 2018-06-11
 
-[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.1.4...master)
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.1.4...v0.2.0)
 
 * Add collector `stat_archiver`
     ([#15](https://github.com/rnaveiras/postgres_exporter/pull/15))
