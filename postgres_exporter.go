@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 
 	// _ "net/http/pprof"
 
@@ -103,7 +102,6 @@ func main() {
 	conn, err = pgx.Connect(connConfig)
 	if err != nil {
 		log.Errorln("Error openning connection to database:", err)
-		os.Exit(-1)
 		//TODO: handle retries
 	}
 
