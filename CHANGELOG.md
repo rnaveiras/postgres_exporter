@@ -1,3 +1,10 @@
+## Unreleased
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/master...v0.2.1)
+
+* Add support cascade replication
+    ([#18](https://github.com/rnaveiras/postgres_exporter/pull/18))
+
 ## Version 0.2.1 / 2018-06-12
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.0...v0.2.1)
