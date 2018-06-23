@@ -18,7 +18,8 @@ SELECT application_name
      , client_addr
      , state
      , sync_state
-     , pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float AS pg_xlog_location_diff
+     , (case when pg_is_in_recovery() then pg_xlog_location_diff(pg_last_xlog_receive_location(), replay_location)::float
+                                      else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
   FROM pg_stat_replication /*postgres_exporter*/`
 )
 
