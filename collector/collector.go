@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -74,6 +75,7 @@ type postgresCollector struct {
 	db         *pgx.Conn
 	Collectors map[string]Collector
 	logger     log.Logger
+	mux        *sync.Mutex
 }
 
 // NewPostgresCollector creates a new postgresCollector
@@ -105,7 +107,8 @@ func NewPostgresCollector(ctx context.Context, db *pgx.Conn, logger log.Logger, 
 		ctx:        ctx,
 		db:         db,
 		logger:     logger,
-		Collectors: collectors}, nil
+		Collectors: collectors,
+		mux:        &sync.Mutex{}}, nil
 }
 
 // Describe implements the prometheus.Collector interface.
@@ -123,7 +126,9 @@ func (n postgresCollector) Collect(ch chan<- prometheus.Metric) {
 
 func (n postgresCollector) execute(name string, c Collector, ch chan<- prometheus.Metric) {
 	begin := time.Now()
+	n.mux.Lock()
 	err := c.Update(n.ctx, n.db, ch)
+	n.mux.Unlock()
 	duration := time.Since(begin)
 	var success float64
 
