@@ -13,6 +13,6 @@ tarball:
   files:
     - LICENSE
 crossbuild:
-  platform:
+  platforms:
     - linux/amd64
     - darwin/amd64

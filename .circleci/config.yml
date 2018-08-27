@@ -1,0 +1,31 @@
+---
+version: 2
+
+jobs:
+  tests:
+    docker:
+      - image: circleci/golang:1.10
+    working_directory: /go/src/github.com/rnaveiras/postgres_exporter
+    steps:
+      - checkout
+      - run: make promu
+      - run: make build
+
+  dep-ensure:
+    docker:
+      - image: circleci/golang:1.10
+    working_directory: /go/src/github.com/rnaveiras/postgres_exporter
+    steps:
+      - checkout
+      - run:
+          name: Verify Go dep packages
+          command: |
+            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+            dep ensure -v -no-vendor -dry-run
+
+workflows:
+  version: 2
+  pipeline:
+    jobs:
+      - dep-ensure
+      - tests

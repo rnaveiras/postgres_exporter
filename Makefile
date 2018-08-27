@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GO           := GO15VENDOREXPERIMENT=1 go
+GO           := go
 FIRST_GOPATH := $(firstword $(subst :, ,$(shell $(GO) env GOPATH)))
 PROMU        := $(FIRST_GOPATH)/bin/promu
 pkgs          = $(shell $(GO) list ./... | grep -v /vendor/)
@@ -21,7 +21,7 @@ DOCKER_IMAGE_NAME   ?= postgres-exporter
 DOCKER_IMAGE_TAG    ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
 
-all: format build test-short
+all: format build test
 
 style:
 	@echo ">> checking code style"
@@ -59,6 +59,5 @@ promu:
 	@GOOS=$(shell uname -s | tr A-Z a-z) \
 		GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
 		$(GO) get -u github.com/prometheus/promu
-
 
 .PHONY: all style format build test vet tarball docker promu
