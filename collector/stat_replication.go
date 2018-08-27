@@ -14,13 +14,17 @@ const (
 
 	// Scrape query
 	statReplicatonLagBytes = `
-SELECT application_name
-     , client_addr
-     , state
-     , sync_state
-     , (case when pg_is_in_recovery() then pg_xlog_location_diff(pg_last_xlog_receive_location(), replay_location)::float
-                                      else pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end) AS pg_xlog_location_diff
-  FROM pg_stat_replication /*postgres_exporter*/`
+WITH pg_replication AS (
+  SELECT application_name
+       , client_addr
+       , state
+       , sync_state
+       , (case when pg_is_in_recovery() THEN pg_xlog_location_diff(pg_last_xlog_receive_location(), replay_location)::float
+                                        ELSE pg_xlog_location_diff(pg_current_xlog_location(), replay_location)::float end)
+                                        AS pg_xlog_location_diff
+    FROM pg_stat_replication
+     )
+SELECT * FROM pg_replication WHERE pg_xlog_location_diff != null /*postgres_exporter*/`
 )
 
 type statReplicationCollector struct {
