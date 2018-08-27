@@ -2,6 +2,8 @@
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/master...v0.2.1)
 
+* Improve replication metrics
+* ([#20](https://github.com/rnaveiras/postgres_exporter/pull/20))
 * Use go-kit/log ([#19](https://github.com/rnaveiras/postgres_exporter/pull/19))
 * Add support cascade replication
     ([#18](https://github.com/rnaveiras/postgres_exporter/pull/18))
