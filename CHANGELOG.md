@@ -1,3 +1,9 @@
+## Version 0.2.3 / 2018-08-29
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.2...v0.2.3)
+
+* Amend replication metric ([#21](https://github.com/rnaveiras/postgres_exporter/pull/21))
+
 ## Version 0.2.2 / 2018-08-27
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.1...v0.2.2)
