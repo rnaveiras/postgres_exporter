@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"github.com/rnaveiras/postgres_exporter/collector"
+	"github.com/rnaveiras/postgres_exporter/gokitadapter"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -64,15 +65,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	level.Info(logger).Log("user", connConfig.User, "host", connConfig.Host, "dbname", connConfig.Database)
+
+	connConfig.Logger = gokitadapter.NewLogger(logger)
+	connConfig.LogLevel = pgx.LogLevelNone
 	connConfig.RuntimeParams = map[string]string{
 		"client_encoding":  "UTF8",
 		"application_name": "postgres_exporter",
 	}
 
-	level.Info(logger).Log("user", connConfig.User, "host", connConfig.Host, "dbname", connConfig.Database)
-
-	// connConfig.LogLevel = pgx.LogLevelDebug
-	// connConfig.Logger = logger
+	if *logLevel == "debug" {
+		connConfig.LogLevel = pgx.LogLevelDebug
+	}
 
 	conn, err := pgx.Connect(connConfig)
 	if err != nil {
