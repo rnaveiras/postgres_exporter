@@ -49,10 +49,13 @@ SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(query_start), cloc
  WHERE state='active' /*postgres_exporter*/`
 
 	// Oldest Snapshot
+	// ignore when backend_xid is null, so we exclude autovacuumn, autoanalyze
+	// and other maintenance tasks
 	statActivityCollectorOldestSnapshotQuery = `
 SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(query_start), clock_timestamp())))
   FROM pg_stat_activity
- WHERE backend_xmin IS NOT NULL /*postgres_exporter*/`
+ WHERE backend_xmin IS NOT NULL
+   AND backend_xid  IS NOT NULL /*postgres_exporter*/`
 )
 
 type statActivityCollector struct {
