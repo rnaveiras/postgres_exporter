@@ -1,3 +1,9 @@
+## Version 0.2.4 / 2018-09-20
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.3...v0.2.4)
+
+* Ignore vacuums in snapshot metric ([#22](https://github.com/rnaveiras/postgres_exporter/pull/22))
+
 ## Version 0.2.3 / 2018-08-29
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.2...v0.2.3)
