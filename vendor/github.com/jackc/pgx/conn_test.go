@@ -227,8 +227,10 @@ func TestConnectWithTLSFallback(t *testing.T) {
 		t.Fatal("Expected failed connection, but succeeded")
 	}
 
+	connConfig = *tlsConnConfig
+	connConfig.TLSConfig = &tls.Config{ServerName: "bogus.local"}
 	connConfig.UseFallbackTLS = true
-	connConfig.FallbackTLSConfig = &tls.Config{InsecureSkipVerify: true}
+	connConfig.FallbackTLSConfig = &tls.Config{ServerName: "bogus.local", InsecureSkipVerify: true}
 
 	conn, err = pgx.Connect(connConfig)
 	if err != nil {
@@ -2068,6 +2070,31 @@ func TestConnInitConnInfo(t *testing.T) {
 		if dtByName != dtByOID {
 			t.Fatalf("Expected type named %v to be the same as type OID %v", name, oid)
 		}
+	}
+
+	ensureConnValid(t, conn)
+}
+
+func TestDomainType(t *testing.T) {
+	conn := mustConnect(t, *defaultConnConfig)
+	defer closeConn(t, conn)
+
+	dt, ok := conn.ConnInfo.DataTypeForName("uint64")
+	if !ok {
+		t.Fatal("Expected data type for domain uint64 to be present")
+	}
+	if dt, ok := dt.Value.(*pgtype.Numeric); !ok {
+		t.Fatalf("Expected data type value for domain uint64 to be *pgtype.Numeric, but it was %T", dt)
+	}
+
+	var n uint64
+	err := conn.QueryRow("select $1::uint64", uint64(42)).Scan(&n)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if n != 42 {
+		t.Fatalf("Expected n to be 42, but was %v", n)
 	}
 
 	ensureConnValid(t, conn)

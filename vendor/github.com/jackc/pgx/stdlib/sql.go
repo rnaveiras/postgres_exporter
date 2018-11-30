@@ -99,9 +99,9 @@ var ErrNotPgx = errors.New("not pgx *sql.DB")
 
 func init() {
 	pgxDriver = &Driver{
-		configs:     make(map[int64]*DriverConfig),
-		fakeTxConns: make(map[*pgx.Conn]*sql.Tx),
+		configs: make(map[int64]*DriverConfig),
 	}
+	fakeTxConns = make(map[*pgx.Conn]*sql.Tx)
 	sql.Register("pgx", pgxDriver)
 
 	databaseSqlOIDs = make(map[pgtype.OID]bool)
@@ -120,18 +120,23 @@ func init() {
 	databaseSqlOIDs[pgtype.XIDOID] = true
 }
 
+var (
+	fakeTxMutex sync.Mutex
+	fakeTxConns map[*pgx.Conn]*sql.Tx
+)
+
 type Driver struct {
 	configMutex sync.Mutex
 	configCount int64
 	configs     map[int64]*DriverConfig
-
-	fakeTxMutex sync.Mutex
-	fakeTxConns map[*pgx.Conn]*sql.Tx
 }
 
 func (d *Driver) Open(name string) (driver.Conn, error) {
-	var connConfig pgx.ConnConfig
-	var afterConnect func(*pgx.Conn) error
+	var (
+		connConfig   pgx.ConnConfig
+		afterConnect func(*pgx.Conn) error
+	)
+
 	if len(name) >= 9 && name[0] == 0 {
 		idBuf := []byte(name)[1:9]
 		id := int64(binary.BigEndian.Uint64(idBuf))
@@ -495,6 +500,10 @@ func (r *Rows) Next(dest []driver.Value) error {
 				r.values[i] = &pgtype.Int4{}
 			case pgtype.Int8OID:
 				r.values[i] = &pgtype.Int8{}
+			case pgtype.JSONOID:
+				r.values[i] = &pgtype.JSON{}
+			case pgtype.JSONBOID:
+				r.values[i] = &pgtype.JSONB{}
 			case pgtype.OIDOID:
 				r.values[i] = &pgtype.OIDValue{}
 			case pgtype.TimestampOID:
@@ -571,21 +580,20 @@ func (fakeTx) Commit() error { return nil }
 func (fakeTx) Rollback() error { return nil }
 
 func AcquireConn(db *sql.DB) (*pgx.Conn, error) {
-	driver, ok := db.Driver().(*Driver)
-	if !ok {
-		return nil, ErrNotPgx
-	}
-
 	var conn *pgx.Conn
 	ctx := context.WithValue(context.Background(), ctxKeyFakeTx, &conn)
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
+	if conn == nil {
+		tx.Rollback()
+		return nil, ErrNotPgx
+	}
 
-	driver.fakeTxMutex.Lock()
-	driver.fakeTxConns[conn] = tx
-	driver.fakeTxMutex.Unlock()
+	fakeTxMutex.Lock()
+	fakeTxConns[conn] = tx
+	fakeTxMutex.Unlock()
 
 	return conn, nil
 }
@@ -594,14 +602,13 @@ func ReleaseConn(db *sql.DB, conn *pgx.Conn) error {
 	var tx *sql.Tx
 	var ok bool
 
-	driver := db.Driver().(*Driver)
-	driver.fakeTxMutex.Lock()
-	tx, ok = driver.fakeTxConns[conn]
+	fakeTxMutex.Lock()
+	tx, ok = fakeTxConns[conn]
 	if ok {
-		delete(driver.fakeTxConns, conn)
-		driver.fakeTxMutex.Unlock()
+		delete(fakeTxConns, conn)
+		fakeTxMutex.Unlock()
 	} else {
-		driver.fakeTxMutex.Unlock()
+		fakeTxMutex.Unlock()
 		return errors.Errorf("can't release conn that is not acquired")
 	}
 

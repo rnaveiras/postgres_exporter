@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"math"
 	"reflect"
@@ -15,15 +16,6 @@ import (
 	"github.com/jackc/pgx/pgproto3"
 	"github.com/jackc/pgx/stdlib"
 )
-
-func openDB(t *testing.T) *sql.DB {
-	db, err := sql.Open("pgx", "postgres://pgx_md5:secret@127.0.0.1:5432/pgx_test")
-	if err != nil {
-		t.Fatalf("sql.Open failed: %v", err)
-	}
-
-	return db
-}
 
 func closeDB(t *testing.T, db *sql.DB) {
 	err := db.Close()
@@ -79,6 +71,14 @@ func closeStmt(t *testing.T, stmt *sql.Stmt) {
 	if err != nil {
 		t.Fatalf("stmt.Close unexpectedly failed: %v", err)
 	}
+}
+
+func TestSQLOpen(t *testing.T) {
+	db, err := sql.Open("pgx", "postgres://pgx_md5:secret@127.0.0.1:5432/pgx_test")
+	if err != nil {
+		t.Fatalf("sql.Open failed: %v", err)
+	}
+	closeDB(t, db)
 }
 
 func TestNormalLifeCycle(t *testing.T) {
@@ -1462,6 +1462,25 @@ func TestSimpleQueryLifeCycle(t *testing.T) {
 	err = rows.Close()
 	if err != nil {
 		t.Fatalf("rows.Close unexpectedly failed: %v", err)
+	}
+
+	ensureConnValid(t, db)
+}
+
+// https://github.com/jackc/pgx/issues/409
+func TestScanJSONIntoJSONRawMessage(t *testing.T) {
+	db := openDB(t)
+	defer closeDB(t, db)
+
+	var msg json.RawMessage
+
+	err := db.QueryRow("select '{}'::json").Scan(&msg)
+	if err != nil {
+		t.Fatalf("QueryRow / Scan failed: %v", err)
+	}
+
+	if bytes.Compare([]byte("{}"), []byte(msg)) != 0 {
+		t.Fatalf("Expected %v, got %v", []byte("{}"), msg)
 	}
 
 	ensureConnValid(t, db)
