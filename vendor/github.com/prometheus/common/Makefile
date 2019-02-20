@@ -13,18 +13,14 @@
 
 include Makefile.common
 
-%/.unpacked: %.ttar
-	./ttar -C $(dir $*) -x -f $*.ttar
-	touch $@
-
-update_fixtures: fixtures.ttar sysfs/fixtures.ttar
-
-%fixtures.ttar: %/fixtures
-	rm -v $(dir $*)fixtures/.unpacked
-	./ttar -C $(dir $*) -c -f $*fixtures.ttar fixtures/
-
-.PHONY: build
-build:
+.PHONY: deps
+deps:
+	@echo ">> getting dependencies"
+	GO111MODULE=$(GO111MODULE) $(GO) get $(GOOPTS) -t ./...
 
 .PHONY: test
-test: fixtures/.unpacked sysfs/fixtures/.unpacked common-test
+test:: deps check_license unused common-test
+
+ifeq (,$(shell echo $(GO_VERSION_NUMBER) | grep -E 'go1\.(7|8|9)\.'))
+test:: staticcheck
+endif

@@ -124,7 +124,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3015ace839b82abfb015b6fc2aebf32f4a6a8c522defacd916552387948c22a8"
+  digest = "1:f0430cc1105c8042561f015f8a0f2c8d7212fd54f8af5f4bb3bc0a641704ed43"
   name = "github.com/prometheus/common"
   packages = [
     "expfmt",
@@ -133,20 +133,21 @@
     "version",
   ]
   pruneopts = ""
-  revision = "4724e9255275ce38f7179b2478abeae4e28c904f"
+  revision = "7a3416fd1f41341905f138746c51a5092e7ddf7a"
 
 [[projects]]
   branch = "master"
-  digest = "1:a56d65fd7955ac60e4550b9e4824877e4cba082fd4128f782eb89055505f5997"
+  digest = "1:1b7cd41afad7e1250d0582c2a12bccf995893b4e2a4265daf0f6a385005a87db"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
     "internal/util",
+    "iostats",
     "nfs",
     "xfs",
   ]
   pruneopts = ""
-  revision = "aa55a523dc0a8297edf51bb75e8eec13eb3be45d"
+  revision = "e4d4a2206da023361ed100d85c5f2cf9c8364e9f"
 
 [[projects]]
   digest = "1:15d017551627c8bb091bde628215b2861bed128855343fdd570c62d08871f6e1"
