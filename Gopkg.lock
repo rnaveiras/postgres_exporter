@@ -64,7 +64,7 @@
   revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
 
 [[projects]]
-  digest = "1:5544f7badae00bc5b9ec6829857bc08f88fce4d3ef73fb616ee57d49abbf7f48"
+  digest = "1:04e02fb6a670a17fdc1bd6147524fd0ed2f2dac359b7024c821375dcb7a103b6"
   name = "github.com/jackc/pgx"
   packages = [
     ".",
@@ -75,8 +75,8 @@
     "pgtype",
   ]
   pruneopts = ""
-  revision = "89f1e6ac7276b61d885db5e5aed6fcbedd1c7e31"
-  version = "v3.2.0"
+  revision = "c59c9cac59ab95eceb0c12ff338923c62f411ea2"
+  version = "v3.3.0"
 
 [[projects]]
   branch = "master"

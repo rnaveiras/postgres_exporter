@@ -458,6 +458,19 @@ func TestParseURI(t *testing.T) {
 				},
 			},
 		},
+		{
+			url: "postgres:///foo?host=/tmp",
+			connParams: pgx.ConnConfig{
+				Host:     "/tmp",
+				Database: "foo",
+				TLSConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+				UseFallbackTLS:    true,
+				FallbackTLSConfig: nil,
+				RuntimeParams:     map[string]string{},
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -1118,11 +1131,31 @@ func TestExecFailure(t *testing.T) {
 	if _, err := conn.Exec("selct;"); err == nil {
 		t.Fatal("Expected SQL syntax error")
 	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
+	}
 
 	rows, _ := conn.Query("select 1")
 	rows.Close()
 	if rows.Err() != nil {
 		t.Fatalf("Exec failure appears to have broken connection: %v", rows.Err())
+	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
+	}
+}
+
+func TestExecFailureWithArguments(t *testing.T) {
+	t.Parallel()
+
+	conn := mustConnect(t, *defaultConnConfig)
+	defer closeConn(t, conn)
+
+	if _, err := conn.Exec("selct $1;", 1); err == nil {
+		t.Fatal("Expected SQL syntax error")
+	}
+	if conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return false")
 	}
 }
 
@@ -1142,6 +1175,9 @@ func TestExecExContextWithoutCancelation(t *testing.T) {
 	if commandTag != "CREATE TABLE" {
 		t.Fatalf("Unexpected results from ExecEx: %v", commandTag)
 	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
+	}
 }
 
 func TestExecExContextFailureWithoutCancelation(t *testing.T) {
@@ -1156,11 +1192,34 @@ func TestExecExContextFailureWithoutCancelation(t *testing.T) {
 	if _, err := conn.ExecEx(ctx, "selct;", nil); err == nil {
 		t.Fatal("Expected SQL syntax error")
 	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
+	}
 
 	rows, _ := conn.Query("select 1")
 	rows.Close()
 	if rows.Err() != nil {
 		t.Fatalf("ExecEx failure appears to have broken connection: %v", rows.Err())
+	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
+	}
+}
+
+func TestExecExContextFailureWithoutCancelationWithArguments(t *testing.T) {
+	t.Parallel()
+
+	conn := mustConnect(t, *defaultConnConfig)
+	defer closeConn(t, conn)
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	if _, err := conn.ExecEx(ctx, "selct $1;", nil, 1); err == nil {
+		t.Fatal("Expected SQL syntax error")
+	}
+	if conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return false")
 	}
 }
 
@@ -1180,8 +1239,25 @@ func TestExecExContextCancelationCancelsQuery(t *testing.T) {
 	if err != context.Canceled {
 		t.Fatalf("Expected context.Canceled err, got %v", err)
 	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
+	}
 
 	ensureConnValid(t, conn)
+}
+
+func TestExecFailureCloseBefore(t *testing.T) {
+	t.Parallel()
+
+	conn := mustConnect(t, *defaultConnConfig)
+	closeConn(t, conn)
+
+	if _, err := conn.Exec("select 1"); err == nil {
+		t.Fatal("Expected network error")
+	}
+	if conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return false")
+	}
 }
 
 func TestExecExExtendedProtocol(t *testing.T) {
@@ -1233,6 +1309,9 @@ func TestExecExSimpleProtocol(t *testing.T) {
 	if commandTag != "CREATE TABLE" {
 		t.Fatalf("Unexpected results from ExecEx: %v", commandTag)
 	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
+	}
 
 	commandTag, err = conn.ExecEx(
 		ctx,
@@ -1245,6 +1324,9 @@ func TestExecExSimpleProtocol(t *testing.T) {
 	}
 	if commandTag != "INSERT 0 1" {
 		t.Fatalf("Unexpected results from ExecEx: %v", commandTag)
+	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
 	}
 }
 
@@ -1268,6 +1350,9 @@ func TestConnExecExSuppliedCorrectParameterOIDs(t *testing.T) {
 	if commandTag != "INSERT 0 1" {
 		t.Fatalf("Unexpected results from ExecEx: %v", commandTag)
 	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
+	}
 }
 
 func TestConnExecExSuppliedIncorrectParameterOIDs(t *testing.T) {
@@ -1286,6 +1371,9 @@ func TestConnExecExSuppliedIncorrectParameterOIDs(t *testing.T) {
 	)
 	if err == nil {
 		t.Fatal("expected error but got none")
+	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
 	}
 }
 
@@ -1314,6 +1402,23 @@ func TestConnExecExIncorrectParameterOIDsAfterAnotherQuery(t *testing.T) {
 	)
 	if err == nil {
 		t.Fatal("expected error but got none")
+	}
+	if !conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return true")
+	}
+}
+
+func TestExecExFailureCloseBefore(t *testing.T) {
+	t.Parallel()
+
+	conn := mustConnect(t, *defaultConnConfig)
+	closeConn(t, conn)
+
+	if _, err := conn.ExecEx(context.Background(), "select 1", nil); err == nil {
+		t.Fatal("Expected network error")
+	}
+	if conn.LastStmtSent() {
+		t.Error("Expected LastStmtSent to return false")
 	}
 }
 
@@ -1553,7 +1658,8 @@ func TestListenNotify(t *testing.T) {
 	}
 
 	// when timeout occurs
-	ctx, _ = context.WithTimeout(context.Background(), time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
 	notification, err = listener.WaitForNotification(ctx)
 	if err != context.DeadlineExceeded {
 		t.Errorf("WaitForNotification returned the wrong kind of error: %v", err)
@@ -1610,7 +1716,8 @@ func TestUnlistenSpecificChannel(t *testing.T) {
 		t.Fatalf("Unexpected error on Query: %v", rows.Err())
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
 	notification, err = listener.WaitForNotification(ctx)
 	if err != context.DeadlineExceeded {
 		t.Errorf("WaitForNotification returned the wrong kind of error: %v", err)
@@ -1690,7 +1797,8 @@ func TestListenNotifySelfNotification(t *testing.T) {
 	// Notify self and WaitForNotification immediately
 	mustExec(t, conn, "notify self")
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 	notification, err := conn.WaitForNotification(ctx)
 	if err != nil {
 		t.Fatalf("Unexpected error on WaitForNotification: %v", err)
@@ -1708,7 +1816,8 @@ func TestListenNotifySelfNotification(t *testing.T) {
 		t.Fatalf("Unexpected error on Query: %v", rows.Err())
 	}
 
-	ctx, _ = context.WithTimeout(context.Background(), time.Second)
+	ctx, cncl := context.WithTimeout(context.Background(), time.Second)
+	defer cncl()
 	notification, err = conn.WaitForNotification(ctx)
 	if err != nil {
 		t.Fatalf("Unexpected error on WaitForNotification: %v", err)

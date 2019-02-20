@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -869,7 +870,8 @@ func TestConnPingContextCancel(t *testing.T) {
 	}
 	defer closeDB(t, db)
 
-	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
 
 	err = db.PingContext(ctx)
 	if err != context.DeadlineExceeded {
@@ -923,7 +925,8 @@ func TestConnPrepareContextCancel(t *testing.T) {
 	}
 	defer closeDB(t, db)
 
-	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
 
 	_, err = db.PrepareContext(ctx, "select now()")
 	if err != context.DeadlineExceeded {
@@ -974,7 +977,8 @@ func TestConnExecContextCancel(t *testing.T) {
 	}
 	defer closeDB(t, db)
 
-	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
 
 	_, err = db.ExecContext(ctx, "create temporary table exec_context_test(id serial primary key)")
 	if err != context.DeadlineExceeded {
@@ -983,6 +987,28 @@ func TestConnExecContextCancel(t *testing.T) {
 
 	if err := <-errChan; err != nil {
 		t.Errorf("mock server err: %v", err)
+	}
+}
+
+func TestConnExecContextFailureRetry(t *testing.T) {
+	db := openDB(t)
+	defer closeDB(t, db)
+
+	// we get a connection, immediately close it, and then get it back
+	{
+		conn, err := stdlib.AcquireConn(db)
+		if err != nil {
+			t.Fatalf("stdlib.AcquireConn unexpectedly failed: %v", err)
+		}
+		conn.Close()
+		stdlib.ReleaseConn(db, conn)
+	}
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		t.Fatalf("db.Conn unexpectedly failed: %v", err)
+	}
+	if _, err := conn.ExecContext(context.Background(), "select 1"); err != driver.ErrBadConn {
+		t.Fatalf("Expected conn.ExecContext to return driver.ErrBadConn, but instead received: %v", err)
 	}
 }
 
@@ -1027,7 +1053,7 @@ func TestConnQueryContextCancel(t *testing.T) {
 					Name:         "n",
 					DataTypeOID:  23,
 					DataTypeSize: 4,
-					TypeModifier: 4294967295,
+					TypeModifier: -1,
 				},
 			},
 		}),
@@ -1077,6 +1103,28 @@ func TestConnQueryContextCancel(t *testing.T) {
 
 	if err := <-errChan; err != nil {
 		t.Errorf("mock server err: %v", err)
+	}
+}
+
+func TestConnQueryContextFailureRetry(t *testing.T) {
+	db := openDB(t)
+	defer closeDB(t, db)
+
+	// we get a connection, immediately close it, and then get it back
+	{
+		conn, err := stdlib.AcquireConn(db)
+		if err != nil {
+			t.Fatalf("stdlib.AcquireConn unexpectedly failed: %v", err)
+		}
+		conn.Close()
+		stdlib.ReleaseConn(db, conn)
+	}
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		t.Fatalf("db.Conn unexpectedly failed: %v", err)
+	}
+	if _, err := conn.QueryContext(context.Background(), "select 1"); err != driver.ErrBadConn {
+		t.Fatalf("Expected conn.QueryContext to return driver.ErrBadConn, but instead received: %v", err)
 	}
 }
 
@@ -1145,7 +1193,8 @@ func TestStmtExecContextCancel(t *testing.T) {
 	}
 	defer stmt.Close()
 
-	ctx, _ := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
 
 	_, err = stmt.ExecContext(ctx, 42)
 	if err != context.DeadlineExceeded {
@@ -1202,7 +1251,7 @@ func TestStmtQueryContextCancel(t *testing.T) {
 					Name:         "n",
 					DataTypeOID:  23,
 					DataTypeSize: 4,
-					TypeModifier: 4294967295,
+					TypeModifier: -1,
 				},
 			},
 		}),
