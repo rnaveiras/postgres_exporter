@@ -29,15 +29,15 @@
   revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
 
 [[projects]]
-  digest = "1:684664f6d28c17faefd0e9824ccaae8a673c25b4fad17d2659c1ff36c6fe1c81"
+  digest = "1:48e65aaf8ce34ffb3e8d56daa9417826db162afbc2040705db331e9a2e9eebe3"
   name = "github.com/go-kit/kit"
   packages = [
     "log",
     "log/level",
   ]
   pruneopts = ""
-  revision = "ca4112baa34cb55091301bdc13b1420a122b1b9e"
-  version = "v0.7.0"
+  revision = "12210fb6ace19e0496167bb3e667dcd91fa9f69b"
+  version = "v0.8.0"
 
 [[projects]]
   digest = "1:6a4a01d58b227c4b6b11111b9f172ec5c17682b82724e58e6daf3f19f4faccd8"
@@ -46,14 +46,6 @@
   pruneopts = ""
   revision = "390ab7935ee28ec6b286364bba9b4dd6410cb3d5"
   version = "v0.3.0"
-
-[[projects]]
-  digest = "1:9ca737b471693542351e112c9e86be9bf7385e42256893a09ecb2a98e2036f74"
-  name = "github.com/go-stack/stack"
-  packages = ["."]
-  pruneopts = ""
-  revision = "259ab82a6cad3992b4e21ff5cac294ccb06474bc"
-  version = "v1.7.0"
 
 [[projects]]
   branch = "master"

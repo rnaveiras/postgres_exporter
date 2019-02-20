@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/transport"
+	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/pkg/transport"
 )
 
 var (
@@ -228,6 +228,8 @@ func (c *client) close() {
 	}
 	if c.watcher != nil {
 		c.watcher.Close()
+	}
+	if c.wcf != nil {
 		c.wcf()
 	}
 }

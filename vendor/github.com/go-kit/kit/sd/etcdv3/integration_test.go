@@ -34,7 +34,7 @@ func runIntegration(settings integrationSettings, client Client, service Service
 
 	// Register our instance.
 	registrar.Register()
-	t.Logf("Registered")
+	t.Log("Registered")
 
 	// Retrieve entries from etcd manually.
 	entries, err = client.GetEntries(settings.key)
@@ -56,7 +56,7 @@ func runIntegration(settings integrationSettings, client Client, service Service
 	if err != nil {
 		t.Fatalf("NewInstancer: %v", err)
 	}
-	t.Logf("Constructed Instancer OK")
+	t.Log("Constructed Instancer OK")
 	defer instancer.Stop()
 
 	endpointer := sd.NewEndpointer(
@@ -64,20 +64,20 @@ func runIntegration(settings integrationSettings, client Client, service Service
 		func(string) (endpoint.Endpoint, io.Closer, error) { return endpoint.Nop, nil, nil },
 		log.With(log.NewLogfmtLogger(os.Stderr), "component", "instancer"),
 	)
-	t.Logf("Constructed Endpointer OK")
+	t.Log("Constructed Endpointer OK")
 	defer endpointer.Close()
 
 	if !within(time.Second, func() bool {
 		endpoints, err := endpointer.Endpoints()
 		return err == nil && len(endpoints) == 1
 	}) {
-		t.Fatalf("Endpointer didn't see Register in time")
+		t.Fatal("Endpointer didn't see Register in time")
 	}
-	t.Logf("Endpointer saw Register OK")
+	t.Log("Endpointer saw Register OK")
 
 	// Deregister first instance of test data.
 	registrar.Deregister()
-	t.Logf("Deregistered")
+	t.Log("Deregistered")
 
 	// Check it was deregistered.
 	if !within(time.Second, func() bool {
@@ -162,6 +162,50 @@ func TestIntegrationTTL(t *testing.T) {
 	defer client.Deregister(service)
 
 	runIntegration(settings, client, service, t)
+}
+
+func TestIntegrationRegistrarOnly(t *testing.T) {
+	settings := testIntegrationSettings(t)
+	client, err := NewClient(context.Background(), []string{settings.addr}, ClientOptions{
+		DialTimeout:   2 * time.Second,
+		DialKeepAlive: 2 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("NewClient(%q): %v", settings.addr, err)
+	}
+
+	service := Service{
+		Key:   settings.key,
+		Value: settings.value,
+		TTL:   NewTTLOption(time.Second*3, time.Second*10),
+	}
+	defer client.Deregister(service)
+
+	// Verify test data is initially empty.
+	entries, err := client.GetEntries(settings.key)
+	if err != nil {
+		t.Fatalf("GetEntries(%q): expected no error, got one: %v", settings.key, err)
+	}
+	if len(entries) > 0 {
+		t.Fatalf("GetEntries(%q): expected no instance entries, got %d", settings.key, len(entries))
+	}
+	t.Logf("GetEntries(%q): %v (OK)", settings.key, entries)
+
+	// Instantiate a new Registrar, passing in test data.
+	registrar := NewRegistrar(
+		client,
+		service,
+		log.With(log.NewLogfmtLogger(os.Stderr), "component", "registrar"),
+	)
+
+	// Register our instance.
+	registrar.Register()
+	t.Log("Registered")
+
+	// Deregister our instance. (so we test registrar only scenario)
+	registrar.Deregister()
+	t.Log("Deregistered")
+
 }
 
 func within(d time.Duration, f func() bool) bool {

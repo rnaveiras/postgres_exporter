@@ -107,10 +107,11 @@ Projects with a ★ have had particular influence on Go kit's design (or vice-ve
 - [Martini](https://github.com/go-martini/martini)
 - [Beego](http://beego.me/)
 - [Revel](https://revel.github.io/) (considered [harmful](https://github.com/go-kit/kit/issues/350))
+- [GoBuffalo](https://gobuffalo.io/)
 
 ## Additional reading
 
-- [Architecting for the Cloud](http://fr.slideshare.net/stonse/architecting-for-the-cloud-using-netflixoss-codemash-workshop-29852233) — Netflix
+- [Architecting for the Cloud](https://slideshare.net/stonse/architecting-for-the-cloud-using-netflixoss-codemash-workshop-29852233) — Netflix
 - [Dapper, a Large-Scale Distributed Systems Tracing Infrastructure](http://research.google.com/pubs/pub36356.html) — Google
 - [Your Server as a Function](http://monkey.org/~marius/funsrv.pdf) (PDF) — Twitter
 
