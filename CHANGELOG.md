@@ -1,3 +1,9 @@
+## Version 0.2.5 / 2019-03-07
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.4...v0.2.5)
+
+* Mutex to avoid issues with concurrent scrapes ([#23](https://github.com/rnaveiras/postgres_exporter/pull/23))
+
 ## Version 0.2.4 / 2018-09-20
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.3...v0.2.4)
