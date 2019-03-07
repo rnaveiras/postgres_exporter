@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	// _ "net/http/pprof"
 
@@ -27,6 +28,7 @@ const (
 
 var logger log.Logger
 var conn *pgx.Conn
+var handlerLock sync.Mutex
 
 var (
 	listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default("0.0.0.0:9187").String()
@@ -40,6 +42,9 @@ func init() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	handlerLock.Lock()
+	defer handlerLock.Unlock()
+
 	filters := r.URL.Query()["collect[]"]
 	level.Debug(logger).Log("component", "web", "query", strings.Join(filters, ","))
 
