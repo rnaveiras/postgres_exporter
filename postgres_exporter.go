@@ -143,6 +143,7 @@ func metricsHandler(logger kitlog.Logger, conn *pgx.Conn) http.Handler {
 
 		registry := prometheus.NewRegistry()
 		err = registry.Register(c)
+
 		if err != nil {
 			logger.Log("error", err)
 			w.WriteHeader(http.StatusInternalServerError)

@@ -17,8 +17,6 @@ import (
 const (
 	// Namespace defines the common namespace to be used by all metrics.
 	namespace = "postgres"
-	// Subsystem(s)
-	exporter = "exporter"
 )
 
 var (
@@ -37,8 +35,7 @@ var (
 )
 
 const (
-	defaultEnabled  = true
-	defaultDisabled = false
+	defaultEnabled = true
 )
 
 var (
@@ -70,7 +67,7 @@ func registerCollector(collector string, isDefaultEnabled bool, factory func() (
 }
 
 // PostgresCollector implements the prometheus.Collector interface.
-type postgresCollector struct {
+type Exporter struct {
 	ctx        context.Context
 	db         *pgx.Conn
 	Collectors map[string]Collector
@@ -79,7 +76,7 @@ type postgresCollector struct {
 }
 
 // NewPostgresCollector creates a new postgresCollector
-func NewPostgresCollector(ctx context.Context, db *pgx.Conn, logger kitlog.Logger, filters ...string) (*postgresCollector, error) {
+func NewPostgresCollector(ctx context.Context, db *pgx.Conn, logger kitlog.Logger, filters ...string) (*Exporter, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
@@ -103,7 +100,7 @@ func NewPostgresCollector(ctx context.Context, db *pgx.Conn, logger kitlog.Logge
 			}
 		}
 	}
-	return &postgresCollector{
+	return &Exporter{
 		ctx:        ctx,
 		db:         db,
 		logger:     logger,
@@ -112,19 +109,19 @@ func NewPostgresCollector(ctx context.Context, db *pgx.Conn, logger kitlog.Logge
 }
 
 // Describe implements the prometheus.Collector interface.
-func (n postgresCollector) Describe(ch chan<- *prometheus.Desc) {
+func (n Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
 	ch <- scrapeSuccessDesc
 }
 
 // Collect implements the prometheus.Collector interface.
-func (n postgresCollector) Collect(ch chan<- prometheus.Metric) {
+func (n Exporter) Collect(ch chan<- prometheus.Metric) {
 	for name, c := range n.Collectors {
 		n.execute(name, c, ch)
 	}
 }
 
-func (n postgresCollector) execute(name string, c Collector, ch chan<- prometheus.Metric) {
+func (n Exporter) execute(name string, c Collector, ch chan<- prometheus.Metric) {
 	begin := time.Now()
 	n.mux.Lock()
 	err := c.Update(n.ctx, n.db, ch)
