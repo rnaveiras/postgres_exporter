@@ -26,8 +26,6 @@ const (
 	defaultDSN string = "user=postgres host=/var/run/postgresql"
 )
 
-var logger kitlog.Logger
-var conn *pgx.Conn
 var handlerLock sync.Mutex
 
 var (
@@ -41,49 +39,12 @@ func init() {
 	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	handlerLock.Lock()
-	defer handlerLock.Unlock()
-
-	filters := r.URL.Query()["collect[]"]
-	level.Debug(logger).Log("component", "web", "query", strings.Join(filters, ","))
-
-	c, err := collector.NewPostgresCollector(r.Context(), conn, kitlog.With(logger, "component", "collector"), filters...)
-	if err != nil {
-		logger.Log("error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Couldn't create %s", err)))
-		return
-	}
-
-	registry := prometheus.NewRegistry()
-	err = registry.Register(c)
-	if err != nil {
-		logger.Log("error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Couldn't register collector: %s", err)))
-		return
-	}
-
-	gatherers := prometheus.Gatherers{
-		prometheus.DefaultGatherer,
-		registry,
-	}
-
-	// Delegate http serving to Prometheus client library, which will call collector.Collect.
-	h := promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{
-		// ErrorLog:      kitlog.Logger
-		ErrorHandling: promhttp.ContinueOnError,
-	})
-	h.ServeHTTP(w, r)
-}
-
 func main() {
 	kingpin.Version(version.Print("postgres_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	logger = kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
+	logger := kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
 	l, err := setlogLevel(*logLevel)
 	if err != nil {
 		level.Error(logger).Log("error", err)
@@ -113,7 +74,7 @@ func main() {
 	// connConfig.LogLevel = pgx.LogLevelDebug
 	// connConfig.Logger = logger
 
-	conn, err = pgx.Connect(connConfig)
+	conn, err := pgx.Connect(connConfig)
 	if err != nil {
 		level.Error(logger).Log("event", "connection.failure", "error", err)
 		//TODO: handle retries
@@ -135,17 +96,8 @@ func main() {
 		level.Info(logger).Log("event", "collector.enabled", "collector", n)
 	}
 
-	// TODO: Remove deprecated InstrumentHandlerFunc usage.
-	http.HandleFunc(*metricsPath, prometheus.InstrumentHandlerFunc("metrics", handler))
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-			<head><title>postgres Exporter</title></head>
-			<body>
-			<h1>Postgres Exporter</h1>
-			<p><a href="` + *metricsPath + `">Metrics</a></p>
-			</body>
-			</html>`))
-	})
+	http.Handle(*metricsPath, metricsHandler(logger, conn))
+	http.Handle("/", catchHandler(metricsPath))
 
 	level.Info(logger).Log("component", "web", "msg", "Start listening for connections", "address", *listenAddress)
 	err = http.ListenAndServe(*listenAddress, nil)
@@ -153,6 +105,59 @@ func main() {
 		level.Error(logger).Log("error", err)
 		os.Exit(1)
 	}
+}
+
+func catchHandler(meticsPath *string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<html>
+               <head><title>postgres Exporter</title></head>
+               <body>
+               <h1>Postgres Exporter</h1>
+               <p><a href="` + *metricsPath + `">Metrics</a></p>
+               </body>
+               </html>`))
+	})
+}
+
+func metricsHandler(logger kitlog.Logger, conn *pgx.Conn) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerLock.Lock()
+		defer handlerLock.Unlock()
+
+		filters := r.URL.Query()["collect[]"]
+		level.Debug(logger).Log("component", "web", "query", strings.Join(filters, ","))
+
+		c, err := collector.NewPostgresCollector(r.Context(), conn, kitlog.With(logger, "component", "collector"), filters...)
+		if err != nil {
+			logger.Log("error", err)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("Couldn't create %s", err)))
+			return
+		}
+
+		registry := prometheus.NewRegistry()
+		err = registry.Register(c)
+		if err != nil {
+			logger.Log("error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("Couldn't register collector: %s", err)))
+			return
+		}
+
+		gatherers := prometheus.Gatherers{
+			prometheus.DefaultGatherer,
+			registry,
+		}
+
+		// Delegate http serving to Prometheus client library, which will call collector.Collect.
+		h := promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{
+			// ErrorLog:      kitlog.Logger
+			ErrorHandling: promhttp.ContinueOnError,
+		})
+		h.ServeHTTP(w, r)
+	})
 }
 
 func setlogLevel(s string) (level.Option, error) {
