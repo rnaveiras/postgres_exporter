@@ -11,7 +11,7 @@ import (
 
 	// _ "net/http/pprof"
 
-	"github.com/go-kit/kit/log"
+	kitlog "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/jackc/pgx"
 	"github.com/pkg/errors"
@@ -26,7 +26,7 @@ const (
 	defaultDSN string = "user=postgres host=/var/run/postgresql"
 )
 
-var logger log.Logger
+var logger kitlog.Logger
 var conn *pgx.Conn
 var handlerLock sync.Mutex
 
@@ -48,7 +48,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	filters := r.URL.Query()["collect[]"]
 	level.Debug(logger).Log("component", "web", "query", strings.Join(filters, ","))
 
-	c, err := collector.NewPostgresCollector(r.Context(), conn, log.With(logger, "component", "collector"), filters...)
+	c, err := collector.NewPostgresCollector(r.Context(), conn, kitlog.With(logger, "component", "collector"), filters...)
 	if err != nil {
 		logger.Log("error", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -72,7 +72,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Delegate http serving to Prometheus client library, which will call collector.Collect.
 	h := promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{
-		// ErrorLog:      log.Logger
+		// ErrorLog:      kitlog.Logger
 		ErrorHandling: promhttp.ContinueOnError,
 	})
 	h.ServeHTTP(w, r)
@@ -83,7 +83,7 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger = kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
 	l, err := setlogLevel(*logLevel)
 	if err != nil {
 		level.Error(logger).Log("error", err)
@@ -91,8 +91,8 @@ func main() {
 	}
 
 	logger = level.NewFilter(logger, l)
-	logger = log.With(logger, "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
-	stdlog.SetOutput(log.NewStdlibAdapter(logger))
+	logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC, "caller", kitlog.DefaultCaller)
+	stdlog.SetOutput(kitlog.NewStdlibAdapter(logger))
 
 	level.Info(logger).Log("msg", "Starting Postgres exporter", "version", version.Info())
 	level.Info(logger).Log("build_context", version.BuildContext())
@@ -125,7 +125,7 @@ func main() {
 	ctx := context.Background()
 
 	// Only used to check collector creation and logging.
-	c, err := collector.NewPostgresCollector(ctx, conn, log.With(logger, "component", "collector"))
+	c, err := collector.NewPostgresCollector(ctx, conn, kitlog.With(logger, "component", "collector"))
 	if err != nil {
 		level.Error(logger).Log("error", err)
 		os.Exit(1)
