@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	kitlog "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/jackc/pgx"
 	"github.com/prometheus/client_golang/prometheus"
@@ -74,12 +74,12 @@ type postgresCollector struct {
 	ctx        context.Context
 	db         *pgx.Conn
 	Collectors map[string]Collector
-	logger     log.Logger
+	logger     kitlog.Logger
 	mux        *sync.Mutex
 }
 
 // NewPostgresCollector creates a new postgresCollector
-func NewPostgresCollector(ctx context.Context, db *pgx.Conn, logger log.Logger, filters ...string) (*postgresCollector, error) {
+func NewPostgresCollector(ctx context.Context, db *pgx.Conn, logger kitlog.Logger, filters ...string) (*postgresCollector, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
