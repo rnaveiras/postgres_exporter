@@ -17,41 +17,41 @@ SELECT archived_count
   FROM pg_stat_archiver /*postgres_exporter*/`
 )
 
-type statArchiverCollector struct {
+type statArchiverScraper struct {
 	archivedCount *prometheus.Desc
 	failedCount   *prometheus.Desc
 	statsReset    *prometheus.Desc
 }
 
-func init() {
-	registerCollector("stat_archiver", defaultEnabled, NewStatArchiverCollector)
-}
-
-// NewStatarchiverCollector returns a new Collector exposing PostgreSQL `pg_stat_archiver` view
-func NewStatArchiverCollector() (Collector, error) {
-	return &statArchiverCollector{
+// NewStatarchiverScraper returns a new Scraper exposing PostgreSQL `pg_stat_archiver` view
+func NewStatArchiverScraper() Scraper {
+	return &statArchiverScraper{
 		archivedCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_archiver_archived_total"),
+			"postgres_stat_archiver_archived_total",
 			"Number of WAL files that have been successfully archived",
 			nil,
 			nil,
 		),
 		failedCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_archiver_failed_total"),
+			"postgres_stat_archiver_failed_total",
 			"Number of failed attempts for archiving WAL files",
 			nil,
 			nil,
 		),
 		statsReset: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_archiver_stats_reset_timestamp"),
+			"postgres_stat_archiver_stats_reset_timestamp",
 			"Time at which these statistics were last reset",
 			nil,
 			nil,
 		),
-	}, nil
+	}
 }
 
-func (c *statArchiverCollector) Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
+func (c *statArchiverScraper) Name() string {
+	return "StatArchiverScraper"
+}
+
+func (c *statArchiverScraper) Scrape(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
 	var archivedCount, failedCount int64
 	var statsReset time.Time
 

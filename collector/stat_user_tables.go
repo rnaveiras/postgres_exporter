@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// The Statistics Collector
+// The Statistics Scraper
 // PostgreSQL's statistics collector is a subsystem that supports collection and reporting of information about
 // server activity. Presently, the collector can count accesses to tables and indexes in both disk-block and
 // individual-row terms. It also tracks the total number of rows in each table, and information about vacuum
@@ -18,9 +18,6 @@ import (
 //https://www.postgresql.org/docs/9.4/static/monitoring-stats.html#PG-STAT-ALL-TABLES-VIEW
 
 const (
-	// Subsystem
-	statUserTablesSubsystem = "stat_user_tables"
-
 	// Scrape query
 	statUserTablesQuery = `
 SELECT schemaname
@@ -48,7 +45,7 @@ SELECT schemaname
  WHERE schemaname != 'information_schema' /*postgres_exporter*/`
 )
 
-type statUserTablesCollector struct {
+type statUserTablesScraper struct {
 	seqScan          *prometheus.Desc
 	seqTupRead       *prometheus.Desc
 	idxScan          *prometheus.Desc
@@ -70,133 +67,132 @@ type statUserTablesCollector struct {
 	autoanalyzeCount *prometheus.Desc
 }
 
-func init() {
-	//TODO
-	// registerCollector("stat_user_tables", defaultEnabled, NewStatUserTablesCollector)
-}
-
-// NewStatUserTablesCollector returns a new Collector exposing postgres pg_stat_database view
-func NewStatUserTablesCollector() (Collector, error) {
-	return &statUserTablesCollector{
+// NewStatUserTablesScraper returns a new Scraper exposing postgres pg_stat_database view
+func NewStatUserTablesScraper() Scraper {
+	return &statUserTablesScraper{
 		seqScan: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "seq_scan_total"),
+			"postgres_stat_user_tablesseq_scan_total",
 			"Number of sequential scans initiated on this table",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		seqTupRead: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "seq_tup_read_total"),
+			"postgres_stat_user_tablesseq_tup_read_total",
 			"Number of live rows fetched by sequential scans",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		idxScan: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "idx_scan_total"),
+			"postgres_stat_user_tablesidx_scan_total",
 			"Number of index scans initiated on this table",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		idxTupFetch: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "idx_tup_fetch_total"),
+			"postgres_stat_user_tablesidx_tup_fetch_total",
 			"Number of live rows fetched by index scans",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		nTupIns: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "n_tup_ins_total"),
+			"postgres_stat_user_tablesn_tup_ins_total",
 			"Number of rows inserted",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		nTupUpd: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "n_tup_upd_total"),
+			"postgres_stat_user_tablesn_tup_upd_total",
 			"Number of rows updated",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		nTupDel: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "n_tup_del_total"),
+			"postgres_stat_user_tablesn_tup_del_total",
 			"Number of rows deleted",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		nTupHotUpd: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "n_tup_hot_upd"),
+			"postgres_stat_user_tablesn_tup_hot_upd",
 			"Number of rows HOT updated (i.e., with no separate index update required)",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		nLiveTup: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "n_live_tup"),
+			"postgres_stat_user_tablesn_live_tup",
 			"Estimated number of live rows",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		nDeadTup: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "n_dead_tup"),
+			"postgres_stat_user_tablesn_dead_tup",
 			"Estimated number of dead rows",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		nModSinceAnalyze: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "n_mod_since_analyze"),
+			"postgres_stat_user_tablesn_mod_since_analyze",
 			"Estimated number of rows modified since this table was last analyzed",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		lastAnalyze: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "last_analyze_timestamp"),
+			"postgres_stat_user_tableslast_analyze_timestamp",
 			"Last time at which this table was manually analyzed",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		lastAutoAnalyze: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "last_autoanalyze_timestamp"),
+			"postgres_stat_user_tableslast_autoanalyze_timestamp",
 			"Last time at which this table was analyzed by the autovacuum daemon",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		lastVacuum: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "last_vacuum_timestamp"),
+			"postgres_stat_user_tableslast_vacuum_timestamp",
 			"Last time at which this table was manually vacuumed (not counting VACUUM FULL)",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		lastAutoVacuum: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "last_autovacuum_timestamp"),
+			"postgres_stat_user_tableslast_autovacuum_timestamp",
 			"Last time at which this table was vacuumed by the autovacuum daemon",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		vacuumCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "vacuum_total"),
+			"postgres_stat_user_tablesvacuum_total",
 			"Number of times this table has been manually vacuumed (not counting VACUUM FULL)",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		autovacuumCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "autovacuum_total"),
+			"postgres_stat_user_tables_autovacuum_total",
 			"Number of times this table has been vacuumed by the autovacuum daemon",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		analyzeCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "analyze_total"),
+			"postgres_stat_user_tables_analyze_total",
 			"Number of times this table has been manually analyzed",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
 		autoanalyzeCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statUserTablesSubsystem, "autoanalyze_total"),
+			"postgres_stat_user_tables_autoanalyze_total",
 			"Number of times this table has been analyzed by the autovacuum daemon",
 			[]string{"schemaname", "relname"},
 			nil,
 		),
-	}, nil
+	}
 }
 
-func (c *statUserTablesCollector) Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
-	rows, err := db.QueryEx(ctx, statUserTablesQuery, nil)
+func (c *statUserTablesScraper) Name() string {
+	return "StatUserTablesScraper"
+}
+
+func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, ch chan<- prometheus.Metric) error {
+	rows, err := conn.QueryEx(ctx, statUserTablesQuery, nil)
 	if err != nil {
 		return err
 	}
