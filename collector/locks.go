@@ -41,7 +41,7 @@ func (c *locksScraper) Name() string {
 	return "LocksScraper"
 }
 
-func (c *locksScraper) Scrape(ctx context.Context, conn *pgx.Conn, ch chan<- prometheus.Metric) error {
+func (c *locksScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
 	rows, err := conn.QueryEx(ctx, locksQuery, nil)
 	if err != nil {
 		return err
