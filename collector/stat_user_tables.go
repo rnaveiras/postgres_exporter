@@ -14,9 +14,7 @@ import (
 // individual-row terms. It also tracks the total number of rows in each table, and information about vacuum
 // and analyze actions for each table. It can also count calls to user-defined functions and the total time
 // spent in each one.
-
 //https://www.postgresql.org/docs/9.4/static/monitoring-stats.html#PG-STAT-ALL-TABLES-VIEW
-
 const (
 	// Scrape query
 	statUserTablesQuery = `
@@ -71,117 +69,117 @@ type statUserTablesScraper struct {
 func NewStatUserTablesScraper() Scraper {
 	return &statUserTablesScraper{
 		seqScan: prometheus.NewDesc(
-			"postgres_stat_user_tablesseq_scan_total",
+			"postgres_stat_user_tables_seq_scan_total",
 			"Number of sequential scans initiated on this table",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		seqTupRead: prometheus.NewDesc(
-			"postgres_stat_user_tablesseq_tup_read_total",
+			"postgres_stat_user_tables_seq_tup_read_total",
 			"Number of live rows fetched by sequential scans",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		idxScan: prometheus.NewDesc(
-			"postgres_stat_user_tablesidx_scan_total",
+			"postgres_stat_user_tables_idx_scan_total",
 			"Number of index scans initiated on this table",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		idxTupFetch: prometheus.NewDesc(
-			"postgres_stat_user_tablesidx_tup_fetch_total",
+			"postgres_stat_user_tables_idx_tup_fetch_total",
 			"Number of live rows fetched by index scans",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		nTupIns: prometheus.NewDesc(
-			"postgres_stat_user_tablesn_tup_ins_total",
+			"postgres_stat_user_tables_n_tup_ins_total",
 			"Number of rows inserted",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		nTupUpd: prometheus.NewDesc(
-			"postgres_stat_user_tablesn_tup_upd_total",
+			"postgres_stat_user_tables_n_tup_upd_total",
 			"Number of rows updated",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		nTupDel: prometheus.NewDesc(
-			"postgres_stat_user_tablesn_tup_del_total",
+			"postgres_stat_user_tables_n_tup_del_total",
 			"Number of rows deleted",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		nTupHotUpd: prometheus.NewDesc(
-			"postgres_stat_user_tablesn_tup_hot_upd",
+			"postgres_stat_user_tables_n_tup_hot_upd",
 			"Number of rows HOT updated (i.e., with no separate index update required)",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		nLiveTup: prometheus.NewDesc(
-			"postgres_stat_user_tablesn_live_tup",
+			"postgres_stat_user_tables_n_live_tup",
 			"Estimated number of live rows",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		nDeadTup: prometheus.NewDesc(
-			"postgres_stat_user_tablesn_dead_tup",
+			"postgres_stat_user_tables_n_dead_tup",
 			"Estimated number of dead rows",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		nModSinceAnalyze: prometheus.NewDesc(
-			"postgres_stat_user_tablesn_mod_since_analyze",
+			"postgres_stat_user_tables_n_mod_since_analyze",
 			"Estimated number of rows modified since this table was last analyzed",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		lastAnalyze: prometheus.NewDesc(
-			"postgres_stat_user_tableslast_analyze_timestamp",
+			"postgres_stat_user_tables_last_analyze_timestamp",
 			"Last time at which this table was manually analyzed",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		lastAutoAnalyze: prometheus.NewDesc(
-			"postgres_stat_user_tableslast_autoanalyze_timestamp",
+			"postgres_stat_user_tables_last_autoanalyze_timestamp",
 			"Last time at which this table was analyzed by the autovacuum daemon",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		lastVacuum: prometheus.NewDesc(
-			"postgres_stat_user_tableslast_vacuum_timestamp",
+			"postgres_stat_user_tables_last_vacuum_timestamp",
 			"Last time at which this table was manually vacuumed (not counting VACUUM FULL)",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		lastAutoVacuum: prometheus.NewDesc(
-			"postgres_stat_user_tableslast_autovacuum_timestamp",
+			"postgres_stat_user_tables_last_autovacuum_timestamp",
 			"Last time at which this table was vacuumed by the autovacuum daemon",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		vacuumCount: prometheus.NewDesc(
-			"postgres_stat_user_tablesvacuum_total",
+			"postgres_stat_user_tables_vacuum_total",
 			"Number of times this table has been manually vacuumed (not counting VACUUM FULL)",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		autovacuumCount: prometheus.NewDesc(
 			"postgres_stat_user_tables_autovacuum_total",
 			"Number of times this table has been vacuumed by the autovacuum daemon",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		analyzeCount: prometheus.NewDesc(
 			"postgres_stat_user_tables_analyze_total",
 			"Number of times this table has been manually analyzed",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 		autoanalyzeCount: prometheus.NewDesc(
 			"postgres_stat_user_tables_autoanalyze_total",
 			"Number of times this table has been analyzed by the autovacuum daemon",
-			[]string{"schemaname", "relname"},
+			[]string{"datname", "schemaname", "relname"},
 			nil,
 		),
 	}
@@ -191,7 +189,12 @@ func (c *statUserTablesScraper) Name() string {
 	return "StatUserTablesScraper"
 }
 
-func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, ch chan<- prometheus.Metric) error {
+func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
+	var datname string
+	if err := conn.QueryRowEx(ctx, "SELECT current_database() /*postgres_exporter*/", nil).Scan(&datname); err != nil {
+		return err
+	}
+
 	rows, err := conn.QueryEx(ctx, statUserTablesQuery, nil)
 	if err != nil {
 		return err
@@ -229,48 +232,48 @@ func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, ch c
 		}
 
 		// postgres_stat_user_tables_seq_scan
-		ch <- prometheus.MustNewConstMetric(c.seqScan, prometheus.CounterValue, seqScan, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.seqScan, prometheus.CounterValue, seqScan, datname, schemaname, relname)
 		// postgres_stat_user_tables_seq_tup_read
-		ch <- prometheus.MustNewConstMetric(c.seqTupRead, prometheus.CounterValue, seqTupRead, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.seqTupRead, prometheus.CounterValue, seqTupRead, datname, schemaname, relname)
 
 		// postgres_stat_user_tables_idx_scan_total
-		ch <- prometheus.MustNewConstMetric(c.idxScan, prometheus.CounterValue, idxScan, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.idxScan, prometheus.CounterValue, idxScan, datname, schemaname, relname)
 		// postgres_stat_user_tables_idx_fetch_total
-		ch <- prometheus.MustNewConstMetric(c.idxTupFetch, prometheus.CounterValue, idxTupFetch, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.idxTupFetch, prometheus.CounterValue, idxTupFetch, datname, schemaname, relname)
 
 		// postgres_stat_user_tables_n_tup_in_total
-		ch <- prometheus.MustNewConstMetric(c.nTupIns, prometheus.CounterValue, nTupIns, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.nTupIns, prometheus.CounterValue, nTupIns, datname, schemaname, relname)
 		// postgres_stat_user_tables_n_tup_upd_total
-		ch <- prometheus.MustNewConstMetric(c.nTupUpd, prometheus.CounterValue, nTupUpd, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.nTupUpd, prometheus.CounterValue, nTupUpd, datname, schemaname, relname)
 		// postgres_stat_user_tables_n_tup_del_total
-		ch <- prometheus.MustNewConstMetric(c.nTupDel, prometheus.CounterValue, nTupDel, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.nTupDel, prometheus.CounterValue, nTupDel, datname, schemaname, relname)
 		// postgres_stat_user_tables_n_tup_hot_upd_total
-		ch <- prometheus.MustNewConstMetric(c.nTupHotUpd, prometheus.CounterValue, nTupHotUpd, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.nTupHotUpd, prometheus.CounterValue, nTupHotUpd, datname, schemaname, relname)
 
 		// postgres_stat_user_tables_n_live_tup
-		ch <- prometheus.MustNewConstMetric(c.nLiveTup, prometheus.GaugeValue, nLiveTup, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.nLiveTup, prometheus.GaugeValue, nLiveTup, datname, schemaname, relname)
 		// postgres_stat_user_tables_n_dead_tup
-		ch <- prometheus.MustNewConstMetric(c.nDeadTup, prometheus.GaugeValue, nDeadTup, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.nDeadTup, prometheus.GaugeValue, nDeadTup, datname, schemaname, relname)
 		// postgres_stat_user_tables_n_mod_since_analyze
-		ch <- prometheus.MustNewConstMetric(c.nModSinceAnalyze, prometheus.GaugeValue, nModSinceAnalyze, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.nModSinceAnalyze, prometheus.GaugeValue, nModSinceAnalyze, datname, schemaname, relname)
 
 		// postgres_stat_user_tables_last_analyze_timestamp
-		ch <- prometheus.MustNewConstMetric(c.lastAnalyze, prometheus.GaugeValue, float64(lastAnalyze.UTC().Unix()), schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.lastAnalyze, prometheus.GaugeValue, float64(lastAnalyze.UTC().Unix()), datname, schemaname, relname)
 		// postgres_stat_user_tables_last_autoanalyze_timestamp
-		ch <- prometheus.MustNewConstMetric(c.lastAutoAnalyze, prometheus.GaugeValue, float64(lastAutoAnalyze.UTC().Unix()), schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.lastAutoAnalyze, prometheus.GaugeValue, float64(lastAutoAnalyze.UTC().Unix()), datname, schemaname, relname)
 		// postgres_stat_user_tables_last_vacuum_timestamp
-		ch <- prometheus.MustNewConstMetric(c.lastVacuum, prometheus.GaugeValue, float64(lastVacuum.UTC().Unix()), schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.lastVacuum, prometheus.GaugeValue, float64(lastVacuum.UTC().Unix()), datname, schemaname, relname)
 		// postgres_stat_user_tables_last_autovacuum_timestamp
-		ch <- prometheus.MustNewConstMetric(c.lastAutoVacuum, prometheus.GaugeValue, float64(lastAutoVacuum.UTC().Unix()), schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.lastAutoVacuum, prometheus.GaugeValue, float64(lastAutoVacuum.UTC().Unix()), datname, schemaname, relname)
 
 		// postgres_stat_user_tables_vacuum_total
-		ch <- prometheus.MustNewConstMetric(c.vacuumCount, prometheus.CounterValue, vacuumCount, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.vacuumCount, prometheus.CounterValue, vacuumCount, datname, schemaname, relname)
 		// postgres_stat_user_tables_autovacuum_total
-		ch <- prometheus.MustNewConstMetric(c.autovacuumCount, prometheus.CounterValue, autovacuumCount, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.autovacuumCount, prometheus.CounterValue, autovacuumCount, datname, schemaname, relname)
 		// postgres_stat_user_tables_analyze_total
-		ch <- prometheus.MustNewConstMetric(c.analyzeCount, prometheus.CounterValue, analyzeCount, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.analyzeCount, prometheus.CounterValue, analyzeCount, datname, schemaname, relname)
 		// postgres_stat_user_tables_autovacuum_total
-		ch <- prometheus.MustNewConstMetric(c.autoanalyzeCount, prometheus.CounterValue, autoanalyzeCount, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(c.autoanalyzeCount, prometheus.CounterValue, autoanalyzeCount, datname, schemaname, relname)
 	}
 
 	err = rows.Err()

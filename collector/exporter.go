@@ -2,6 +2,9 @@ package collector
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	kitlog "github.com/go-kit/kit/log"
@@ -15,6 +18,12 @@ var (
 		"postgres_up",
 		"Whether the Postgres server is up.",
 		nil,
+		nil,
+	)
+	infoDesc = prometheus.NewDesc(
+		"postgres_info",
+		"Postgres version",
+		[]string{"version"},
 		nil,
 	)
 	scrapeDurationDesc = prometheus.NewDesc(
@@ -31,11 +40,13 @@ var (
 	)
 )
 
+const infoQuery = `SHOW server_version /*postgres_exporter*/`
+
 // Scraper is the interface each scraper has to implement.
 type Scraper interface {
 	Name() string
 	// Scrape new metrics and expose them via prometheus registry.
-	Scrape(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error
+	Scrape(ctx context.Context, db *pgx.Conn, version Version, ch chan<- prometheus.Metric) error
 }
 
 type Exporter struct {
@@ -43,6 +54,27 @@ type Exporter struct {
 	logger     kitlog.Logger
 	connConfig pgx.ConnConfig
 	scrapers   []Scraper
+}
+
+// Postgres Version
+type Version struct {
+	version float64
+}
+
+func NewVersion(v string) Version {
+	values := strings.Split(v, " ")
+	version, _ := strconv.ParseFloat(values[0], 64)
+	return Version{
+		version: version,
+	}
+}
+
+func (v Version) Gte(n float64) bool {
+	return v.version >= n
+}
+
+func (v Version) String() string {
+	return fmt.Sprintf("%g", v.version)
 }
 
 // Verify our Exporter satisfies the prometheus.Collector interface
@@ -83,16 +115,26 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	defer conn.Close()
+	// postgres_up
 	ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, 1)
 
+	var version string
+	if err := conn.QueryRowEx(e.ctx, infoQuery, nil).Scan(&version); err != nil {
+		return // cannot continue without a version
+	}
+
+	v := NewVersion(version)
+	// postgres_info
+	ch <- prometheus.MustNewConstMetric(infoDesc, prometheus.GaugeValue, 1, v.String())
+
 	for _, scraper := range e.scrapers {
-		e.scrape(scraper, conn, ch)
+		e.scrape(scraper, conn, v, ch)
 	}
 }
 
-func (e Exporter) scrape(scraper Scraper, conn *pgx.Conn, ch chan<- prometheus.Metric) {
+func (e Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) {
 	start := time.Now()
-	err := scraper.Scrape(e.ctx, conn, ch)
+	err := scraper.Scrape(e.ctx, conn, version, ch)
 	duration := time.Since(start)
 
 	var success float64
