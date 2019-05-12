@@ -1,3 +1,9 @@
+## Version 0.3.0 / 2019-05-12
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.3.0...v0.2.5)
+
+* Change connection model ([#24](https://github.com/rnaveiras/postgres_exporter/pull/24))
+
 ## Version 0.2.5 / 2019-03-07
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.4...v0.2.5)
