@@ -9,9 +9,6 @@ import (
 )
 
 const (
-	// Subsystem
-	statReplicationSubsystem = "stat_replication"
-
 	// Scrape query
 	statReplicatonLagBytes = `
 WITH pg_replication AS (
@@ -33,28 +30,28 @@ pg_log_location_diff is null and it requires to be exclude */
 SELECT * FROM pg_replication WHERE pg_xlog_location_diff IS NOT NULL /*postgres_exporter*/`
 )
 
-type statReplicationCollector struct {
+type statReplicationScraper struct {
 	lagBytes *prometheus.Desc
 }
 
-func init() {
-	registerCollector("stat_replication", defaultEnabled, NewStatReplicationCollector)
-}
-
-// NewStatReplicationCollector returns a new Collector exposing postgres pg_stat_replication
-func NewStatReplicationCollector() (Collector, error) {
-	return &statReplicationCollector{
+// NewStatReplicationScraper returns a new Scraper exposing postgres pg_stat_replication
+func NewStatReplicationScraper() Scraper {
+	return &statReplicationScraper{
 		lagBytes: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, statReplicationSubsystem, "lag_bytes"),
+			"postgres_stat_replication_lag_bytes",
 			"delay in bytes pg_xlog_location_diff(pg_current_xlog_location(), replay_location)",
 			[]string{"application_name", "client_addr", "state", "sync_state"},
 			nil,
 		),
-	}, nil
+	}
 }
 
-func (c *statReplicationCollector) Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
-	rows, err := db.QueryEx(ctx, statReplicatonLagBytes, nil)
+func (c *statReplicationScraper) Name() string {
+	return "StatReplicationScraper"
+}
+
+func (c *statReplicationScraper) Scrape(ctx context.Context, conn *pgx.Conn, ch chan<- prometheus.Metric) error {
+	rows, err := conn.QueryEx(ctx, statReplicatonLagBytes, nil)
 	if err != nil {
 		return err
 	}

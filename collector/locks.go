@@ -9,8 +9,7 @@ import (
 )
 
 const (
-	locksSubsystem = "locks"
-	locksQuery     = `
+	locksQuery = `
 SELECT datname
      , locktype
      , mode
@@ -22,28 +21,28 @@ SELECT datname
 `
 )
 
-type locksCollector struct {
+type locksScraper struct {
 	locks *prometheus.Desc
 }
 
-func init() {
-	registerCollector("locks", defaultEnabled, NewLocksCollector)
-}
-
-// NewLocksCollector returns a new Collector exposing data from pg_locks
-func NewLocksCollector() (Collector, error) {
-	return &locksCollector{
+// NewLocksScraper returns a new Scraper exposing data from pg_locks
+func NewLocksScraper() Scraper {
+	return &locksScraper{
 		locks: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, locksSubsystem, "table"),
+			"postgres_locks_table",
 			"Number of locks by datname, locktype, mode and granted",
 			[]string{"datname", "locktype", "mode", "granted"},
 			nil,
 		),
-	}, nil
+	}
 }
 
-func (c *locksCollector) Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
-	rows, err := db.QueryEx(ctx, locksQuery, nil)
+func (c *locksScraper) Name() string {
+	return "LocksScraper"
+}
+
+func (c *locksScraper) Scrape(ctx context.Context, conn *pgx.Conn, ch chan<- prometheus.Metric) error {
+	rows, err := conn.QueryEx(ctx, locksQuery, nil)
 	if err != nil {
 		return err
 	}

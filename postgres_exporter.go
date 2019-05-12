@@ -1,12 +1,9 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	stdlog "log"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 
 	// _ "net/http/pprof"
@@ -78,29 +75,7 @@ func main() {
 		connConfig.LogLevel = pgx.LogLevelDebug
 	}
 
-	conn, err := pgx.Connect(connConfig)
-	if err != nil {
-		level.Error(logger).Log("event", "connection.failure", "error", err)
-		//TODO: handle retries
-	} else {
-		level.Info(logger).Log("event", "connection.success")
-		defer conn.Close()
-	}
-
-	ctx := context.Background()
-
-	// Only used to check collector creation and logging.
-	c, err := collector.NewPostgresCollector(ctx, conn, kitlog.With(logger, "component", "collector"))
-	if err != nil {
-		level.Error(logger).Log("error", err)
-		os.Exit(1)
-	}
-
-	for n := range c.Collectors {
-		level.Info(logger).Log("event", "collector.enabled", "collector", n)
-	}
-
-	http.Handle(*metricsPath, metricsHandler(logger, conn))
+	http.Handle(*metricsPath, metricsHandler(logger, connConfig))
 	http.Handle("/", catchHandler(metricsPath))
 
 	level.Info(logger).Log("component", "web", "msg", "Start listening for connections", "address", *listenAddress)
@@ -125,42 +100,21 @@ func catchHandler(meticsPath *string) http.Handler {
 	})
 }
 
-func metricsHandler(logger kitlog.Logger, conn *pgx.Conn) http.Handler {
+func metricsHandler(logger kitlog.Logger, connConfig pgx.ConnConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerLock.Lock()
 		defer handlerLock.Unlock()
 
-		filters := r.URL.Query()["collect[]"]
-		level.Debug(logger).Log("component", "web", "query", strings.Join(filters, ","))
-
-		c, err := collector.NewPostgresCollector(r.Context(), conn, kitlog.With(logger, "component", "collector"), filters...)
-		if err != nil {
-			logger.Log("error", err)
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(fmt.Sprintf("Couldn't create %s", err)))
-			return
-		}
-
 		registry := prometheus.NewRegistry()
-		err = registry.Register(c)
-
-		if err != nil {
-			logger.Log("error", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Couldn't register collector: %s", err)))
-			return
-		}
+		registry.MustRegister(collector.NewExporter(r.Context(), logger, connConfig))
 
 		gatherers := prometheus.Gatherers{
 			prometheus.DefaultGatherer,
-			registry,
+			registry, // postgres_exporter metrics
 		}
 
 		// Delegate http serving to Prometheus client library, which will call collector.Collect.
-		h := promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{
-			// ErrorLog:      kitlog.Logger
-			ErrorHandling: promhttp.ContinueOnError,
-		})
+		h := promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{})
 		h.ServeHTTP(w, r)
 	})
 }

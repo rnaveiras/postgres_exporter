@@ -25,7 +25,7 @@ SELECT checkpoints_timed
   FROM pg_stat_bgwriter /*postgres_exporter*/`
 )
 
-type statBgwriterCollector struct {
+type statBgwriterScraper struct {
 	checkpointsTimed    *prometheus.Desc
 	checkpointsReq      *prometheus.Desc
 	checkpointWriteTime *prometheus.Desc
@@ -39,90 +39,90 @@ type statBgwriterCollector struct {
 	statsReset          *prometheus.Desc
 }
 
-func init() {
-	registerCollector("stat_bgwriter", defaultEnabled, NewStatBgwriterCollector)
-}
-
-// NewStatBgwriterCollector returns a new Collector exposing PostgreSQL `pg_stat_bgwriter` view
-func NewStatBgwriterCollector() (Collector, error) {
-	return &statBgwriterCollector{
+// NewStatBgwriterScraper returns a new Scraper exposing PostgreSQL `pg_stat_bgwriter` view
+func NewStatBgwriterScraper() Scraper {
+	return &statBgwriterScraper{
 		checkpointsTimed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_checkpoints_timed_total"),
+			"postgres_stat_bgwriter_checkpoints_timed_total",
 			"Number of scheduled checkpoints that have been performed",
 			nil,
 			nil,
 		),
 		checkpointsReq: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_checkpoints_req_total"),
+			"postgres_stat_bgwriter_checkpoints_req_total",
 			"Number of requested checkpoints that have been performed",
 			nil,
 			nil,
 		),
 		checkpointWriteTime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_checkpoint_write_time_seconds_total"),
+			"postgres_stat_bgwriter_checkpoint_write_time_seconds_total",
 			"Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk",
 			nil,
 			nil,
 		),
 		checkpointSyncTime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_checkpoint_sync_time_seconds_total"),
+			"postgres_stat_bgwriter_checkpoint_sync_time_seconds_total",
 			"Total amount of time that has been spent in the portion of checkpoint processing where files are synchronized to disk",
 			nil,
 			nil,
 		),
 		buffersCheckpoint: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_buffers_checkpoint_total"),
+			"postgres_stat_bgwriter_buffers_checkpoint_total",
 			"Number of buffers written during checkpoints",
 			nil,
 			nil,
 		),
 		buffersClean: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_buffers_clean_total"),
+			"postgres_stat_bgwriter_buffers_clean_total",
 			"Number of buffers written by the background writer",
 			nil,
 			nil,
 		),
 		maxWrittenClean: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_maxwritten_clean_total"),
+			"postgres_stat_bgwriter_maxwritten_clean_total",
 			"Number of times the background writer stopped a cleaning scan because it had written too many buffers",
 			nil,
 			nil,
 		),
 		buffersBackend: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_buffers_backend_total"),
+			"postgres_stat_bgwriter_buffers_backend_total",
 			"Number of buffers written directly by a backend",
 			nil,
 			nil,
 		),
 		buffersBackendFsync: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_buffers_backend_fsync_total"),
+			"postgres_stat_bgwriter_buffers_backend_fsync_total",
 			"Number of times a backend had to execute its own fsync call",
 			nil,
 			nil,
 		),
 		buffersAlloc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_buffers_alloc_total"),
+			"postgres_stat_bgwriter_buffers_alloc_total",
 			"Number of buffers allocated",
 			nil,
 			nil,
 		),
 		statsReset: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "stat_bgwriter_stats_reset_timestamp"),
+			"postgres_stat_bgwriter_stats_reset_timestamp",
 			"Time at which these statistics were last reset",
 			nil,
 			nil,
 		),
-	}, nil
+	}
 }
 
-func (c *statBgwriterCollector) Update(ctx context.Context, db *pgx.Conn, ch chan<- prometheus.Metric) error {
+func (c *statBgwriterScraper) Name() string {
+	return "StatBgwriterScraper"
+}
+
+func (c *statBgwriterScraper) Scrape(ctx context.Context, conn *pgx.Conn, ch chan<- prometheus.Metric) error {
 	var checkpointsTimedCounter, checkpointsReqCounter,
 		buffersCheckpoint, buffersClean, maxWrittenClean,
 		buffersBackend, buffersBackendFsync, buffersAlloc int64
 	var checkpointWriteTime, checkpointSyncTime float64
 	var statsReset time.Time
 
-	if err := db.QueryRowEx(ctx, statBgwriter, nil).
+	if err := conn.QueryRowEx(ctx, statBgwriter, nil).
 		Scan(&checkpointsTimedCounter,
 			&checkpointsReqCounter,
 			&checkpointWriteTime,
