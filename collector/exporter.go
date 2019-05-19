@@ -93,6 +93,7 @@ func NewExporter(ctx context.Context, logger kitlog.Logger, connConfig pgx.ConnC
 			NewLocksScraper(),
 			NewStatActivityScraper(),
 			NewStatArchiverScraper(),
+			NewStatBgwriterScraper(),
 			NewStatDatabaseScraper(),
 			NewStatReplicationScraper(),
 			NewStatUserTablesScraper(),

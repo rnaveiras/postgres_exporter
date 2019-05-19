@@ -1,9 +1,15 @@
+## Version 0.4.0 / 2019-05-19
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.3.0...v0.4.0)
+
+* Add additional info metrics ([#26](https://github.com/rnaveiras/postgres_exporter/pull/26))
+
 ## Version 0.3.0 / 2019-05-12
 
-[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.3.0...v0.2.5)
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.2.5...v0.3.0)
 
 * Change connection model ([#24](https://github.com/rnaveiras/postgres_exporter/pull/24))
-* Add version suppor ([#25](https://github.com/rnaveiras/postgres_exporter/pull/25))
+* Add version support ([#25](https://github.com/rnaveiras/postgres_exporter/pull/25))
 
 ## Version 0.2.5 / 2019-03-07
 
