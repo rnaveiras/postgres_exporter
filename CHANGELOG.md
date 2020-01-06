@@ -1,3 +1,9 @@
+## Version 0.5.0 / 2020-01-06
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.4.0...v0.5.0)
+
+* Add vacuum metrics ([#27](https://github.com/rnaveiras/postgres_exporter/pull/27))
+
 ## Version 0.4.0 / 2019-05-19
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.3.0...v0.4.0)
