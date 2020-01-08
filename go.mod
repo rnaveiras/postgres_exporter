@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/cockroachdb/apd v1.1.0 // indirect
-	github.com/go-kit/kit v0.8.0
+	github.com/go-kit/kit v0.9.0
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgx v3.3.0+incompatible
 	github.com/lib/pq v1.3.0 // indirect
