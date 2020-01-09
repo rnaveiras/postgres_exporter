@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -122,7 +122,7 @@ func (c *statBgwriterScraper) Scrape(ctx context.Context, conn *pgx.Conn, versio
 	var checkpointWriteTime, checkpointSyncTime float64
 	var statsReset time.Time
 
-	if err := conn.QueryRowEx(ctx, statBgwriter, nil).
+	if err := conn.QueryRow(ctx, statBgwriter).
 		Scan(&checkpointsTimedCounter,
 			&checkpointsReqCounter,
 			&checkpointWriteTime,

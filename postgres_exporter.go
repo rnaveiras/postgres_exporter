@@ -10,7 +10,7 @@ import (
 
 	kitlog "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -56,7 +56,7 @@ func main() {
 	level.Info(logger).Log("msg", "Starting Postgres exporter", "version", version.Info())
 	level.Info(logger).Log("build_context", version.BuildContext())
 
-	connConfig, err := pgx.ParseConnectionString(*dataSource)
+	connConfig, err := pgx.ParseConfig(*dataSource)
 	if err != nil {
 		level.Error(logger).Log("error", err)
 		os.Exit(1)
@@ -64,15 +64,16 @@ func main() {
 
 	level.Info(logger).Log("user", connConfig.User, "host", connConfig.Host, "dbname", connConfig.Database)
 
-	connConfig.Logger = gokitadapter.NewLogger(logger)
-	connConfig.LogLevel = pgx.LogLevelNone
 	connConfig.RuntimeParams = map[string]string{
 		"client_encoding":  "UTF8",
 		"application_name": "postgres_exporter",
 	}
 
-	if *logLevel == "debug" {
-		connConfig.LogLevel = pgx.LogLevelDebug
+	connConfig.Logger = gokitadapter.NewLogger(logger)
+	connConfig.LogLevel, err = pgx.LogLevelFromString(*logLevel)
+	if err != nil {
+		level.Error(logger).Log("error", err)
+		os.Exit(1)
 	}
 
 	http.Handle(*metricsPath, metricsHandler(logger, connConfig))
@@ -100,7 +101,7 @@ func catchHandler(meticsPath *string) http.Handler {
 	})
 }
 
-func metricsHandler(logger kitlog.Logger, connConfig pgx.ConnConfig) http.Handler {
+func metricsHandler(logger kitlog.Logger, connConfig *pgx.ConnConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerLock.Lock()
 		defer handlerLock.Unlock()

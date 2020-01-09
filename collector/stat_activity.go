@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -104,7 +104,7 @@ func (c *statActivityScraper) Name() string {
 }
 
 func (c *statActivityScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
-	rows, err := conn.QueryEx(ctx, statActivityQuery, nil)
+	rows, err := conn.Query(ctx, statActivityQuery)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (c *statActivityScraper) Scrape(ctx context.Context, conn *pgx.Conn, versio
 		return err
 	}
 
-	err = conn.QueryRowEx(ctx, statActivityScraperBackendStartQuery, nil).Scan(&oldestBackend)
+	err = conn.QueryRow(ctx, statActivityScraperBackendStartQuery).Scan(&oldestBackend)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (c *statActivityScraper) Scrape(ctx context.Context, conn *pgx.Conn, versio
 	// postgres_stat_activity_oldest_backend_timestamp
 	ch <- prometheus.MustNewConstMetric(c.backend, prometheus.GaugeValue, float64(oldestBackend.UTC().Unix()))
 
-	err = conn.QueryRowEx(ctx, statActivityScraperXactQuery, nil).Scan(&oldestTx)
+	err = conn.QueryRow(ctx, statActivityScraperXactQuery).Scan(&oldestTx)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (c *statActivityScraper) Scrape(ctx context.Context, conn *pgx.Conn, versio
 	// postgres_stat_activity_oldest_xact_seconds
 	ch <- prometheus.MustNewConstMetric(c.xact, prometheus.GaugeValue, oldestTx)
 
-	err = conn.QueryRowEx(ctx, statActivityScraperActiveQuery, nil).Scan(&oldestActive)
+	err = conn.QueryRow(ctx, statActivityScraperActiveQuery).Scan(&oldestActive)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (c *statActivityScraper) Scrape(ctx context.Context, conn *pgx.Conn, versio
 	// postgres_stat_activity_oldest_query_active_seconds
 	ch <- prometheus.MustNewConstMetric(c.active, prometheus.GaugeValue, oldestActive)
 
-	err = conn.QueryRowEx(ctx, statActivityScraperOldestSnapshotQuery, nil).Scan(&oldestSnapshot)
+	err = conn.QueryRow(ctx, statActivityScraperOldestSnapshotQuery).Scan(&oldestSnapshot)
 	if err != nil {
 		return err
 	}

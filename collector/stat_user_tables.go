@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -191,11 +191,11 @@ func (c *statUserTablesScraper) Name() string {
 
 func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
 	var datname string
-	if err := conn.QueryRowEx(ctx, "SELECT current_database() /*postgres_exporter*/", nil).Scan(&datname); err != nil {
+	if err := conn.QueryRow(ctx, "SELECT current_database() /*postgres_exporter*/").Scan(&datname); err != nil {
 		return err
 	}
 
-	rows, err := conn.QueryEx(ctx, statUserTablesQuery, nil)
+	rows, err := conn.Query(ctx, statUserTablesQuery)
 	if err != nil {
 		return err
 	}

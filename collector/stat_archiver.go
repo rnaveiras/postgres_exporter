@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -55,7 +55,7 @@ func (c *statArchiverScraper) Scrape(ctx context.Context, db *pgx.Conn, version 
 	var archivedCount, failedCount int64
 	var statsReset time.Time
 
-	if err := db.QueryRowEx(ctx, statArchiver, nil).
+	if err := db.QueryRow(ctx, statArchiver).
 		Scan(&archivedCount,
 			&failedCount,
 			&statsReset,
