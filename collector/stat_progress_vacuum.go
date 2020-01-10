@@ -3,7 +3,7 @@ package collector
 import (
 	"context"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -138,7 +138,7 @@ func (c *statVacuumProgressScraper) Name() string {
 }
 
 func (c *statVacuumProgressScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
-	rows, err := conn.QueryEx(ctx, statVacuumProgress, nil)
+	rows, err := conn.Query(ctx, statVacuumProgress)
 	if err != nil {
 		return err
 	}

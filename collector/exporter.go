@@ -9,7 +9,7 @@ import (
 
 	kitlog "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -52,7 +52,7 @@ type Scraper interface {
 type Exporter struct {
 	ctx        context.Context
 	logger     kitlog.Logger
-	connConfig pgx.ConnConfig
+	connConfig *pgx.ConnConfig
 	scrapers   []Scraper
 }
 
@@ -83,7 +83,7 @@ var _ prometheus.Collector = (*Exporter)(nil)
 // NewExporter is called every time we receive a scrape request and knows how
 // to collect metrics using each of the scrapers. It will live only for the
 // duration of the scrape request.
-func NewExporter(ctx context.Context, logger kitlog.Logger, connConfig pgx.ConnConfig) *Exporter {
+func NewExporter(ctx context.Context, logger kitlog.Logger, connConfig *pgx.ConnConfig) *Exporter {
 	return &Exporter{
 		ctx:        ctx,
 		logger:     logger,
@@ -110,18 +110,18 @@ func (e Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (e Exporter) Collect(ch chan<- prometheus.Metric) {
-	conn, err := pgx.Connect(e.connConfig)
+	conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, 0)
 		return // cannot continue without a valid connection
 	}
 
-	defer conn.Close()
+	defer conn.Close(e.ctx)
 	// postgres_up
 	ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, 1)
 
 	var version string
-	if err := conn.QueryRowEx(e.ctx, infoQuery, nil).Scan(&version); err != nil {
+	if err := conn.QueryRow(e.ctx, infoQuery).Scan(&version); err != nil {
 		return // cannot continue without a version
 	}
 

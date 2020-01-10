@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -66,13 +66,13 @@ func (c *statReplicationScraper) Name() string {
 }
 
 func (c *statReplicationScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
-	var rows *pgx.Rows
+	var rows pgx.Rows
 	var err error
 
 	if version.Gte(10) {
-		rows, err = conn.QueryEx(ctx, statReplicationLagBytes, nil)
+		rows, err = conn.Query(ctx, statReplicationLagBytes)
 	} else {
-		rows, err = conn.QueryEx(ctx, statReplicationLagBytes9x, nil)
+		rows, err = conn.Query(ctx, statReplicationLagBytes9x)
 	}
 
 	if err != nil {

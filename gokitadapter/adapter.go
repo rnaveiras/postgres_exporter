@@ -1,12 +1,13 @@
 package gokitadapter
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	kitlog "github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 )
 
 // Logger ...
@@ -20,7 +21,7 @@ func NewLogger(logger kitlog.Logger) *Logger {
 }
 
 // Log (pgx compatible)
-func (l *Logger) Log(level pgx.LogLevel, msg string, data map[string]interface{}) {
+func (l *Logger) Log(ctx context.Context, level pgx.LogLevel, msg string, data map[string]interface{}) {
 	fieldsLogger := l.logger
 
 	for key, value := range data {

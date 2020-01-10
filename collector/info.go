@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -60,25 +60,25 @@ func (c *infoScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Versio
 	var recovery, backup int64
 	var startTime, configLoadTime time.Time
 
-	if err := conn.QueryRowEx(ctx, isInRecoveryQuery, nil).Scan(&recovery); err != nil {
+	if err := conn.QueryRow(ctx, isInRecoveryQuery).Scan(&recovery); err != nil {
 		return err
 	}
 	// postgres_is_in_recovery
 	ch <- prometheus.MustNewConstMetric(c.isInRecovery, prometheus.GaugeValue, float64(recovery))
 
-	if err := conn.QueryRowEx(ctx, isInBackupQuery, nil).Scan(&backup); err != nil {
+	if err := conn.QueryRow(ctx, isInBackupQuery).Scan(&backup); err != nil {
 		return err
 	}
 	// postgres_is_in_backup
 	ch <- prometheus.MustNewConstMetric(c.isInBackup, prometheus.GaugeValue, float64(backup))
 
-	if err := conn.QueryRowEx(ctx, startTimeQuery, nil).Scan(&startTime); err != nil {
+	if err := conn.QueryRow(ctx, startTimeQuery).Scan(&startTime); err != nil {
 		return err
 	}
 	// postgres_start_time_seconds
 	ch <- prometheus.MustNewConstMetric(c.startTime, prometheus.GaugeValue, float64(startTime.UTC().Unix()))
 
-	if err := conn.QueryRowEx(ctx, configLoadTimeQuery, nil).Scan(&configLoadTime); err != nil {
+	if err := conn.QueryRow(ctx, configLoadTimeQuery).Scan(&configLoadTime); err != nil {
 		return err
 	}
 	// postgres_config_last_load_time_seconds

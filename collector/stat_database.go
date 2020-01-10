@@ -3,7 +3,7 @@ package collector
 import (
 	"context"
 
-	"github.com/jackc/pgx"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -156,7 +156,7 @@ func (c *statDatabaseScraper) Name() string {
 }
 
 func (c *statDatabaseScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
-	rows, err := conn.QueryEx(ctx, statDatabaseQuery, nil)
+	rows, err := conn.Query(ctx, statDatabaseQuery)
 	if err != nil {
 		return err
 	}
