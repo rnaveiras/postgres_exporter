@@ -40,7 +40,8 @@ SELECT schemaname
      , analyze_count::float
      , autoanalyze_count::float
   FROM pg_stat_user_tables
- WHERE schemaname != 'information_schema' /*postgres_exporter*/`
+ WHERE schemaname != 'information_schema'
+  AND idx_tup_fetch IS NOT NULL /*postgres_exporter*/`
 )
 
 type statUserTablesScraper struct {
