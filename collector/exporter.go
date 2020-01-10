@@ -29,18 +29,20 @@ var (
 	scrapeDurationDesc = prometheus.NewDesc(
 		"postgres_exporter_scraper_duration_seconds",
 		"Duration of a scrapers scrape.",
-		[]string{"scraper"},
+		[]string{"scraper", "datname"},
 		nil,
 	)
 	scrapeSuccessDesc = prometheus.NewDesc(
 		"postgres_exporter_scraper_success",
 		"Whether a scraper succeeded.",
-		[]string{"scraper"},
+		[]string{"scraper", "datname"},
 		nil,
 	)
 )
 
 const infoQuery = `SHOW server_version /*postgres_exporter*/`
+const listDatnameQuery = `
+SELECT datname FROM pg_database WHERE datallowconn = true AND datistemplate = false /*postgres_exporter*/`
 
 // Scraper is the interface each scraper has to implement.
 type Scraper interface {
@@ -50,10 +52,11 @@ type Scraper interface {
 }
 
 type Exporter struct {
-	ctx        context.Context
-	logger     kitlog.Logger
-	connConfig *pgx.ConnConfig
-	scrapers   []Scraper
+	ctx             context.Context
+	logger          kitlog.Logger
+	connConfig      *pgx.ConnConfig
+	scrapers        []Scraper
+	datnameScrapers []Scraper
 }
 
 // Postgres Version
@@ -95,8 +98,10 @@ func NewExporter(ctx context.Context, logger kitlog.Logger, connConfig *pgx.Conn
 			NewStatArchiverScraper(),
 			NewStatBgwriterScraper(),
 			NewStatDatabaseScraper(),
-			NewStatVacuumProgressScraper(),
 			NewStatReplicationScraper(),
+		},
+		datnameScrapers: []Scraper{
+			NewStatVacuumProgressScraper(),
 			NewStatUserTablesScraper(),
 		},
 	}
@@ -113,6 +118,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 	conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, 0)
+		level.Error(e.logger).Log("error", err)
 		return // cannot continue without a valid connection
 	}
 
@@ -122,6 +128,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	var version string
 	if err := conn.QueryRow(e.ctx, infoQuery).Scan(&version); err != nil {
+		level.Error(e.logger).Log("error", err)
 		return // cannot continue without a version
 	}
 
@@ -129,8 +136,49 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 	// postgres_info
 	ch <- prometheus.MustNewConstMetric(infoDesc, prometheus.GaugeValue, 1, v.String())
 
+	// discovery databases
+	var dbnames []string
+
+	rows, err := conn.Query(e.ctx, listDatnameQuery)
+	if err != nil {
+		level.Error(e.logger).Log("error", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var dbname string
+		err := rows.Scan(&dbname)
+		if err != nil {
+			level.Error(e.logger).Log("error", err)
+			return
+		}
+		dbnames = append(dbnames, dbname)
+	}
+
+	// run global scrapers
 	for _, scraper := range e.scrapers {
 		e.scrape(scraper, conn, v, ch)
+	}
+
+	// run datname scrapers
+	for _, dbname := range dbnames {
+		// update connection dbname
+		e.connConfig.Config.Database = dbname
+
+		// establish a new connection
+		conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
+		if err != nil {
+			level.Error(e.logger).Log("error", err)
+			return // cannot continue without a valid connection
+		}
+
+		// scrape
+		for _, scraper := range e.datnameScrapers {
+			e.scrape(scraper, conn, v, ch)
+		}
+
+		conn.Close(e.ctx)
 	}
 }
 
@@ -150,6 +198,7 @@ func (e Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch ch
 		success = 1
 	}
 
-	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), scraper.Name())
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, scraper.Name())
+	datname := e.connConfig.Config.Database
+	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), scraper.Name(), datname)
+	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, scraper.Name(), datname)
 }

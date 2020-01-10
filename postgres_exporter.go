@@ -70,10 +70,14 @@ func main() {
 	}
 
 	connConfig.Logger = gokitadapter.NewLogger(logger)
-	connConfig.LogLevel, err = pgx.LogLevelFromString(*logLevel)
-	if err != nil {
-		level.Error(logger).Log("error", err)
-		os.Exit(1)
+	connConfig.LogLevel = pgx.LogLevelNone
+
+	if *logLevel != "info" {
+		connConfig.LogLevel, err = pgx.LogLevelFromString(*logLevel)
+		if err != nil {
+			level.Error(logger).Log("error", err)
+			os.Exit(1)
+		}
 	}
 
 	http.Handle(*metricsPath, metricsHandler(logger, connConfig))
