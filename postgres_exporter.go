@@ -33,10 +33,6 @@ var (
 	logLevel      = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
 )
 
-func init() {
-	prometheus.MustRegister(version.NewCollector("postgres_exporter"))
-}
-
 func main() {
 	kingpin.Version(version.Print("postgres_exporter"))
 	kingpin.HelpFlag.Short('h')
@@ -111,6 +107,7 @@ func metricsHandler(logger kitlog.Logger, connConfig *pgx.ConnConfig) http.Handl
 		defer handlerLock.Unlock()
 
 		registry := prometheus.NewRegistry()
+		registry.MustRegister(version.NewCollector("postgres_exporter"))
 		registry.MustRegister(collector.NewExporter(r.Context(), logger, connConfig))
 
 		gatherers := prometheus.Gatherers{
@@ -119,7 +116,13 @@ func metricsHandler(logger kitlog.Logger, connConfig *pgx.ConnConfig) http.Handl
 		}
 
 		// Delegate http serving to Prometheus client library, which will call collector.Collect.
-		h := promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{})
+		h := promhttp.InstrumentMetricHandler(
+			prometheus.DefaultRegisterer,
+			promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{
+				ErrorHandling:       promhttp.ContinueOnError,
+				Registry:            registry,
+				MaxRequestsInFlight: 15,
+			}))
 		h.ServeHTTP(w, r)
 	})
 }
