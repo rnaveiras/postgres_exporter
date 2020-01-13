@@ -1,3 +1,11 @@
+## Version 0.6.0 / 2020-01-13
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.5.0...v0.6.0)
+
+* Add multi-db support ([#31](https://github.com/rnaveiras/postgres_exporter/pull/31))
+* Update go-kit ([#29](https://github.com/rnaveiras/postgres_exporter/pull/29))
+* go mod ([#28](https://github.com/rnaveiras/postgres_exporter/pull/28))
+
 ## Version 0.5.0 / 2020-01-06
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.4.0...v0.5.0)
