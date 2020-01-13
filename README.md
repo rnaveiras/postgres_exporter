@@ -52,20 +52,20 @@ Prometheus exporter for PostgreSQL server metrics.
 | postgres_stat_database_xact_commit_total | Number of transactions in this database that have been committed | datname |
 | postgres_stat_database_xact_rollback_total | Number of transactions in this database that have been rolled back | datname |
 | postgres_stat_replication_lag_bytes | Replication Lag in bytes | application_name, client_addr, state, sync_state |
-| postgres_stat_vacuum_progress_heap_blks_scanned | Number of heap blocks scanned | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_heap_blks_total | Total number of heap blocks in the table | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_heap_blks_vacuumed | Number of heap blocks vacuumed | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_index_vacuum_count | Number of completed index vacuum cycles | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_max_dead_tuples | Number of dead tuples that we can store before needing to perform an index vacuum cycle | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_num_dead_tuples | Number of dead tuples collected since the last index vacuum cycle | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_phase_cleaning_up_indexes | VACUUM is currently cleaning up indexes | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_phase_initializing | VACUUM is preparing to begin scanning the heap | pid, query_start, datname, relnam
-| postgres_stat_vacuum_progress_phase_performing_final_cleanup | VACUUM is performing final cleanup | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_phase_scanning_heap | VACUUM is currently scanning the heap | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_phase_truncating_heap | VACUUM is currently truncating the heap | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_phase_vacuuming_heap | VACUUM is currently vacuuming the heap | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_phase_vacuuming_indexes | VACUUM is currently vacuuming the indexes | pid, query_start, datname, relname |
-| postgres_stat_vacuum_progress_running | VACUUM is running | pid, query_start, datname, relname |
+| postgres_stat_vacuum_progress_heap_blks_scanned | Number of heap blocks scanned | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_heap_blks_total | Total number of heap blocks in the table | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_heap_blks_vacuumed | Number of heap blocks vacuumed | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_index_vacuum_count | Number of completed index vacuum cycles | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_max_dead_tuples | Number of dead tuples that we can store before needing to perform an index vacuum cycle | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_num_dead_tuples | Number of dead tuples collected since the last index vacuum cycle | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_phase_cleaning_up_indexes | VACUUM is currently cleaning up indexes | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_phase_initializing | VACUUM is preparing to begin scanning the heap | pid, query_start, schemaname, datname, relnam
+| postgres_stat_vacuum_progress_phase_performing_final_cleanup | VACUUM is performing final cleanup | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_phase_scanning_heap | VACUUM is currently scanning the heap | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_phase_truncating_heap | VACUUM is currently truncating the heap | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_phase_vacuuming_heap | VACUUM is currently vacuuming the heap | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_phase_vacuuming_indexes | VACUUM is currently vacuuming the indexes | pid, query_start, schemaname, datname, relname |
+| postgres_stat_vacuum_progress_running | VACUUM is running | pid, query_start, schemaname, datname, relname |
 | postgres_up | Whether the Postgres server is up | |
 
 ### Run
