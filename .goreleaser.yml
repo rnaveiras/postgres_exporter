@@ -1,11 +1,17 @@
 ---
+before:
+  hooks:
+    - go mod tidy
+
 builds:
   - binary: postgres_exporter
-    flags: -a -tags netgo
+    flags: -mod=vendor -a -tags netgo
     ldflags: >
-      -X github.com/rnaveiras/postgres_exporter/vendor/github.com/prometheus/common/version.Version={{.Version}}
-      -X github.com/rnaveiras/postgres_exporter/vendor/github.com/prometheus/common/version.Revision={{.Commit}}
-      -X github.com/rnaveiras/postgres_exporter/vendor/github.com/prometheus/common/version.BuildDate={{.Date}}
+      -X github.com/prometheus/common/version.Version={{.Version}}
+      -X github.com/prometheus/common/version.Revision={{.FullCommit}}
+      -X github.com/prometheus/common/version.Branch={{.Env.GIT_BRANCH}}
+      -X github.com/prometheus/common/version.BuildDate={{.Date}}
+      -X github.com/prometheus/common/version.BuildUser={{.Env.USER}}@{{.Env.HOSTNAME}}
     goos:
       - darwin
       - linux
