@@ -1,3 +1,9 @@
+## Version 0.7.0 / 2020-01-16
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.6.0...v0.7.0)
+
+* Amend oldest query active and oldest snapshot ([#32](https://github.com/rnaveiras/postgres_exporter/pull/32))
+
 ## Version 0.6.0 / 2020-01-13
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.5.0...v0.6.0)
