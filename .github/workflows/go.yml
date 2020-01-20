@@ -1,0 +1,41 @@
+---
+name: Go
+on: [push]
+jobs:
+  mod-tidy:
+    name: mod-tidy
+    runs-on: ubuntu-latest
+    steps:
+      - name: set up go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+        id: go
+      - name: Check out code
+        uses: actions/checkout@v1
+      - name: go mod tidy
+        run: go mod tidy
+      - name: go mod vendor
+        run: go mod vendor
+      - name: debug
+        run: |
+          git status --porcelain
+      - name: check vendor
+        run: |
+          test -z "$(git status --porcelain)"
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    needs: [mod-tidy]
+    steps:
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+        id: go
+      - name: Check out code
+        uses: actions/checkout@v1
+      - name: Promu
+        run: make promu
+      - name: Build
+        run: make build
