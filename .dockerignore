@@ -1,3 +1,2 @@
-.git
 .build
-vendor
+pg*
