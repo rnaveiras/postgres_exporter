@@ -35,7 +35,7 @@ github.com/jackc/pgx/v4/internal/sanitize
 github.com/kr/logfmt
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/pkg/errors v0.8.1
+# github.com/pkg/errors v0.9.1
 github.com/pkg/errors
 # github.com/prometheus/client_golang v1.3.0
 github.com/prometheus/client_golang/prometheus
