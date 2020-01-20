@@ -20,7 +20,7 @@ github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
 # github.com/jackc/chunkreader/v2 v2.0.0
 github.com/jackc/chunkreader/v2
-# github.com/jackc/pgconn v1.1.0
+# github.com/jackc/pgconn v1.2.1
 github.com/jackc/pgconn
 github.com/jackc/pgconn/internal/ctxwatch
 github.com/jackc/pgconn/stmtcache
@@ -30,9 +30,9 @@ github.com/jackc/pgio
 github.com/jackc/pgpassfile
 # github.com/jackc/pgproto3/v2 v2.0.0
 github.com/jackc/pgproto3/v2
-# github.com/jackc/pgtype v1.0.3
+# github.com/jackc/pgtype v1.1.0
 github.com/jackc/pgtype
-# github.com/jackc/pgx/v4 v4.1.2
+# github.com/jackc/pgx/v4 v4.2.1
 github.com/jackc/pgx/v4
 github.com/jackc/pgx/v4/internal/sanitize
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
