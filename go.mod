@@ -11,6 +11,5 @@ require (
 	github.com/prometheus/common v0.9.1
 	github.com/shopspring/decimal v0.0.0-20200105231215-408a2507e114 // indirect
 	golang.org/x/crypto v0.0.0-20200108215511-5d647ca15757 // indirect
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
