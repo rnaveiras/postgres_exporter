@@ -7,10 +7,10 @@ github.com/alecthomas/units
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
-# github.com/go-kit/kit v0.9.0
+# github.com/go-kit/kit v0.10.0
 github.com/go-kit/kit/log
 github.com/go-kit/kit/log/level
-# github.com/go-logfmt/logfmt v0.4.0
+# github.com/go-logfmt/logfmt v0.5.0
 github.com/go-logfmt/logfmt
 # github.com/golang/protobuf v1.3.2
 github.com/golang/protobuf/proto
@@ -35,8 +35,6 @@ github.com/jackc/pgtype
 # github.com/jackc/pgx/v4 v4.2.1
 github.com/jackc/pgx/v4
 github.com/jackc/pgx/v4/internal/sanitize
-# github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
-github.com/kr/logfmt
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/pkg/errors v0.9.1
