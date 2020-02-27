@@ -1,3 +1,11 @@
+## Version 0.8.0 / 2020-02-27
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.7.0...v0.8.0)
+
+* Add stat_activity_oldest_backend_xmin ([#38](https://github.com/rnaveiras/postgres_exporter/pull/38))
+* Bump github.com/prometheus/client_golang from 1.3.0 to 1.4.1 ([#40](https://github.com/rnaveiras/postgres_exporter/pull/40))
+* Bump github.com/go-kit/kit from 0.9.0 to 0.10.0 ([#42](https://github.com/rnaveiras/postgres_exporter/pull/42))
+
 ## Version 0.7.0 / 2020-01-16
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.6.0...v0.7.0)
