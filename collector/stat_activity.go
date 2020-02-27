@@ -50,6 +50,11 @@ SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(query_start), cloc
 SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(query_start), clock_timestamp())))
   FROM pg_stat_activity
  WHERE backend_xmin IS NOT NULL /*postgres_exporter*/`
+
+	// Oldest snapshot transaction ID
+	// There should be no need to coalesce to a non-null value, as this query
+	// itself will hold a snapshot even if no other backends have an xmin.
+	statActivityScraperOldestSnapshotXidQuery = `SELECT min(backend_xmin::text::float) FROM pg_stat_activity /*postgres_exporter*/`
 )
 
 type statActivityScraper struct {
@@ -58,6 +63,7 @@ type statActivityScraper struct {
 	xact        *prometheus.Desc
 	active      *prometheus.Desc
 	snapshot    *prometheus.Desc
+	xmin        *prometheus.Desc
 }
 
 // NewStatActivityScraper returns a new Scraper exposing postgres pg_stat_activity
@@ -93,6 +99,12 @@ func NewStatActivityScraper() Scraper {
 			nil,
 			nil,
 		),
+		xmin: prometheus.NewDesc(
+			"postgres_stat_activity_oldest_backend_xmin",
+			"The lowest backend_xmin across all backends",
+			nil,
+			nil,
+		),
 	}
 }
 
@@ -108,7 +120,7 @@ func (c *statActivityScraper) Scrape(ctx context.Context, conn *pgx.Conn, versio
 	defer rows.Close()
 
 	var datname, state string
-	var count, oldestTx, oldestActive, oldestSnapshot float64
+	var count, oldestTx, oldestActive, oldestSnapshot, oldestXmin float64
 	var oldestBackend time.Time
 
 	for rows.Next() {
@@ -156,6 +168,14 @@ func (c *statActivityScraper) Scrape(ctx context.Context, conn *pgx.Conn, versio
 
 	// postgres_stat_activity_oldest_snapshot_seconds
 	ch <- prometheus.MustNewConstMetric(c.snapshot, prometheus.GaugeValue, oldestSnapshot)
+
+	err = conn.QueryRow(ctx, statActivityScraperOldestSnapshotXidQuery).Scan(&oldestXmin)
+	if err != nil {
+		return err
+	}
+
+	// postgres_stat_activity_oldest_backend_xmin
+	ch <- prometheus.MustNewConstMetric(c.xmin, prometheus.GaugeValue, oldestXmin)
 
 	return nil
 }
