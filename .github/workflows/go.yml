@@ -17,7 +17,8 @@ jobs:
         run: go mod tidy
       - run: |
           if ! git diff --exit-code -- go.mod go.sum; then
-            echo "Modules not tidy; please run 'go mod tidy'";
+            echo "Modules not tidy; please run 'go mod tidy'"
+            exit 1
           fi;
   build:
     name: build
