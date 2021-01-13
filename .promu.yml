@@ -1,8 +1,7 @@
 ---
 verbose: false
 go:
-  version: 1.13.8
-  cgo: false
+  version: 1.15.6
 repository:
   path: github.com/rnaveiras/postgres_exporter
 build:
@@ -10,7 +9,7 @@ build:
   binaries:
     - name: postgres_exporter
       path: ./
-  flags: -mod=vendor -a -tags netgo
+  flags: -a -tags netgo
   ldflags: |
     -X github.com/prometheus/common/version.Version={{.Version}}
     -X github.com/prometheus/common/version.Revision={{.Revision}}
