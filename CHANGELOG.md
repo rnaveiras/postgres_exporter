@@ -1,3 +1,9 @@
+## UNRELEASE
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.8.0...master)
+
+* Remove vendor depedencies ([#75](https://github.com/rnaveiras/postgres_exporter/pull/75))
+
 ## Version 0.8.0 / 2020-02-27
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.7.0...v0.8.0)
