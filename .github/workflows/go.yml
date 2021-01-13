@@ -6,35 +6,31 @@ jobs:
     name: mod-tidy
     runs-on: ubuntu-latest
     steps:
-      - name: set up go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.13
-        id: go
       - name: Check out code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
+      - name: set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15.6
+        id: go
       - name: go mod tidy
         run: go mod tidy
-      - name: go mod vendor
-        run: go mod vendor
-      - name: debug
-        run: |
-          git status --porcelain
-      - name: check vendor
-        run: |
-          test -z "$(git status --porcelain)"
+      - run: |
+          if ! git diff --exit-code -- go.mod go.sum; then
+            echo "Modules not tidy; please run 'go mod tidy'";
+          fi;
   build:
     name: build
     runs-on: ubuntu-latest
     needs: [mod-tidy]
     steps:
-      - name: Set up Go 1.13
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.13
-        id: go
       - name: Check out code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
+      - name: set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15.6
+        id: go
       - name: Promu
         run: make promu
       - name: Build
