@@ -9,7 +9,7 @@ require (
 	github.com/jackc/pgx/v4 v4.10.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
-	github.com/prometheus/common v0.15.0
+	github.com/prometheus/common v0.19.0
 	github.com/prometheus/procfs v0.3.0 // indirect
 	golang.org/x/sys v0.0.0-20210113000019-eaf3bda374d2 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
