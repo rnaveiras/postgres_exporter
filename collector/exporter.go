@@ -103,6 +103,7 @@ func NewExporter(ctx context.Context, logger kitlog.Logger, connConfig *pgx.Conn
 		datnameScrapers: []Scraper{
 			NewStatVacuumProgressScraper(),
 			NewStatUserTablesScraper(),
+			NewDiskUsageScraper(),
 		},
 	}
 }

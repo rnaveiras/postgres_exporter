@@ -4,6 +4,7 @@ Prometheus exporter for PostgreSQL server metrics.
 
 ## Collectors
 
+- disk_usage
 - stat_activity
 - stat_archiver
 - stat_bgwriter
@@ -16,6 +17,8 @@ Prometheus exporter for PostgreSQL server metrics.
 
 | Metric | Meaning | Labels |
 | ------ | ------- | ------ |
+| postgres_disk_usage_relation_bytes| Number of bytes used by each relation (table, index, etc) | datname, schemaname, relname |
+| postgres_disk_usage_table_bytes| Number of bytes used by each table, including related indexes etc | datname, schemaname, relname |
 | postgres_in_recovery | Whether Postgres is in recovery | |
 | postgres_info| Postgres version | version |
 | postgres_stat_activity_connections | Number of current connections in their current state | datname, state |
