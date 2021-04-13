@@ -9,8 +9,7 @@ import (
 
 const (
 	indexUsageQuery = `
-	SELECT
-			schemaname
+	SELECT schemaname
 		, relname AS tablename
 		, indexrelname AS indexname
 		, pg_relation_size(indexrelid)::float AS size
@@ -18,7 +17,7 @@ const (
 
 	tableUsageQuery = `
 	SELECT schemaname
-			 , relname AS tablename
+		 , relname AS tablename
 		 , pg_table_size(schemaname || '.' || relname)::float AS size
   FROM pg_stat_user_tables /*postgres_exporter*/`
 )
@@ -39,7 +38,7 @@ func NewDiskUsageScraper() Scraper {
 		),
 		tableUsage: prometheus.NewDesc(
 			"postgres_disk_usage_table_bytes",
-			"Bytes used on disk to store this table (including indexes)",
+			"Bytes used on disk to store this table",
 			[]string{"datname", "schemaname", "tablename"},
 			nil,
 		),
