@@ -1,7 +1,8 @@
-## UNRELEASE
+## Version 0.9.0 / 2021-04-13
 
-[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.8.0...master)
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.8.0...v0.9.0)
 
+* Add disk usage metrics([#83](https://github.com/rnaveiras/postgres_exporter/pull/83))
 * Remove vendor depedencies ([#75](https://github.com/rnaveiras/postgres_exporter/pull/75))
 
 ## Version 0.8.0 / 2020-02-27
