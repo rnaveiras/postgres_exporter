@@ -27,7 +27,8 @@ SELECT datname
      , deadlocks::float
      , temp_files::float
      , temp_bytes::float
-  FROM pg_stat_database /*postgres_exporter*/`
+  FROM pg_stat_database
+  WHERE datname IS NOT NULL /*postgres_exporter*/`
 )
 
 type statDatabaseScraper struct {
