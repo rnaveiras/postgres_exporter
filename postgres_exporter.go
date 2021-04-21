@@ -102,13 +102,15 @@ func catchHandler(meticsPath *string) http.Handler {
 }
 
 func metricsHandler(logger kitlog.Logger, connConfig *pgx.ConnConfig) http.Handler {
+	exporter := collector.NewExporter(logger, connConfig)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerLock.Lock()
 		defer handlerLock.Unlock()
 
 		registry := prometheus.NewRegistry()
 		registry.MustRegister(version.NewCollector("postgres_exporter"))
-		registry.MustRegister(collector.NewExporter(r.Context(), logger, connConfig))
+		registry.MustRegister(exporter.NewRun(r.Context()))
 
 		gatherers := prometheus.Gatherers{
 			prometheus.DefaultGatherer,
