@@ -106,7 +106,7 @@ func NewExporter(logger kitlog.Logger, connConfig *pgx.ConnConfig) *Exporter {
 		datnameScrapers: []Scraper{
 			NewStatVacuumProgressScraper(),
 			NewStatUserTablesScraper(),
-			NewDiskUsageScraper(),
+			NewCachedScraper(NewDiskUsageScraper(), 5*time.Minute),
 		},
 	}
 }
