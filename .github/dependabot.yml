@@ -1,0 +1,13 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: github.com/prometheus/common
+    versions:
+    - 0.16.0
+    - 0.17.0
+    - 0.18.0
