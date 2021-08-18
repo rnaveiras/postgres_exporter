@@ -9,7 +9,10 @@ Prometheus exporter for PostgreSQL server metrics.
 - stat_archiver
 - stat_bgwriter
 - stat_database
+- stat_progress_vacuum
 - stat_replication
+- stat_user_indexes
+- stat_user_tables
 - info
 - locks
 
@@ -69,6 +72,9 @@ Prometheus exporter for PostgreSQL server metrics.
 | postgres_stat_vacuum_progress_phase_vacuuming_heap | VACUUM is currently vacuuming the heap | pid, query_start, schemaname, datname, relname |
 | postgres_stat_vacuum_progress_phase_vacuuming_indexes | VACUUM is currently vacuuming the indexes | pid, query_start, schemaname, datname, relname |
 | postgres_stat_vacuum_progress_running | VACUUM is running | pid, query_start, schemaname, datname, relname |
+| postgres_stat_user_indexes_scan_total | Number of times this index has been scanned | datname, schemaname, tablename, indexname |
+| postgres_stat_user_indexes_tuple_read_total | Number of times tuples have been returned from scanning this index | datname, schemaname, tablename, indexname |
+| postgres_stat_user_indexes_tuple_fetch_total | Number of live tuples fetched by scans on this index | datname, schemaname, tablename, indexname |
 | postgres_up | Whether the Postgres server is up | |
 
 ### Run
