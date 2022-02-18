@@ -32,7 +32,6 @@ func (l *Logger) Log(ctx context.Context, level pgx.LogLevel, msg string, data m
 		case "time":
 			v := value.(time.Duration)
 			fieldsLogger = kitlog.With(fieldsLogger, "duration", v.Seconds())
-			break
 
 		case "sql":
 			v := value.(string)

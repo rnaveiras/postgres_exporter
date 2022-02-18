@@ -1,0 +1,29 @@
+---
+run:
+  deadline: 5m
+
+output:
+  sort-results: true
+
+linters:
+  enable:
+    - depguard
+    # - gofumpt
+    - goimports
+    - revive
+    - bodyclose
+    # - gochecknoglobals
+    - errname
+    - errorlint
+    # - forcetypeassert
+    - gochecknoinits
+    - gocyclo
+    - gosec
+    - misspell
+    - promlinter
+    - prealloc
+    - sqlclosecheck
+
+linters-settings:
+  errcheck:
+    exclude: .errcheck_excludes.txt

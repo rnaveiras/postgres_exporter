@@ -21,11 +21,11 @@ DOCKER_IMAGE_NAME   ?= postgres-exporter
 DOCKER_IMAGE_TAG    ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
 
-all: format build test
+all: lint build test
 
-style:
-	@echo ">> checking code style"
-	@! gofmt -d $(shell find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
+lint:
+	@echo ">> running golangci-lint"
+	@golangci-lint run
 
 test-short:
 	@echo ">> running short tests"
@@ -34,10 +34,6 @@ test-short:
 test:
 	@echo ">> running tests"
 	@$(GO) test -race $(pkgs)
-
-format:
-	@echo ">> formatting code"
-	@$(GO) fmt $(pkgs)
 
 vet:
 	@echo ">> vetting code"
@@ -58,6 +54,6 @@ docker:
 promu:
 	@GOOS=$(shell uname -s | tr A-Z a-z) \
 		GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
-		$(GO) get -u github.com/prometheus/promu
+		$(GO) install github.com/prometheus/promu@v0.13.0
 
-.PHONY: all style format build test vet tarball docker promu
+.PHONY: all lint build test vet tarball docker promu
