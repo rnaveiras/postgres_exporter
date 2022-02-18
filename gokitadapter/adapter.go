@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	kitlog "github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	kitlog "github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	pgx "github.com/jackc/pgx/v4"
 )
 
@@ -32,7 +32,6 @@ func (l *Logger) Log(ctx context.Context, level pgx.LogLevel, msg string, data m
 		case "time":
 			v := value.(time.Duration)
 			fieldsLogger = kitlog.With(fieldsLogger, "duration", v.Seconds())
-			break
 
 		case "sql":
 			v := value.(string)

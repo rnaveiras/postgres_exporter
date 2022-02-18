@@ -1,10 +1,13 @@
-FROM golang:1.16-alpine3.12 as builder
+# syntax=docker/dockerfile:1
+FROM golang:1.17.7-alpine3.15 as builder
 
-ENV PROMU_SHA256=17d991fea8e992636272d9b4e24b72c104d305ed1460d40891894fae6b6c64a2 \
-    PROMU_VERSION=0.12.0
+ENV PROMU_SHA256=41bdeadd6bb761058adc82e1c0fc9951ca3eac9d0556d29bdf01993f7afd1f57 \
+    PROMU_VERSION=0.13.0
 
-RUN set -x \
-  && apk --no-cache add curl ca-certificates git \
+SHELL ["/bin/ash", "-euox", "pipefail", "-c"]
+
+# hadolint ignore=DL3018
+RUN apk --no-cache add curl ca-certificates git \
   && curl -o /tmp/promu.tar.gz -fsL https://github.com/prometheus/promu/releases/download/v${PROMU_VERSION}/promu-${PROMU_VERSION}.linux-amd64.tar.gz \
   && echo "${PROMU_SHA256}  /tmp/promu.tar.gz" | sha256sum -c \
   && tar xvfz /tmp/promu.tar.gz -C /tmp \
@@ -19,7 +22,7 @@ RUN set -x \
   && promu build --verbose --prefix=./output \
   && find ./output
 
-FROM alpine:3.12
+FROM alpine:3.15
 LABEL maintainer="Raul Naveiras <rnaveiras@gmail.com>"
 
 COPY --from=builder /go/src/app/output/postgres_exporter /bin/postgres_exporter

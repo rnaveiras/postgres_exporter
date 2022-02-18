@@ -8,8 +8,6 @@ import (
 )
 
 const (
-	// Subsystem
-	statDatabaseSubsystem = "stat_database"
 	// Scrape query
 	statDatabaseQuery = `
 SELECT datname
