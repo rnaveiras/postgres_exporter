@@ -8,8 +8,8 @@ import (
 
 	// _ "net/http/pprof"
 
-	kitlog "github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	kitlog "github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
