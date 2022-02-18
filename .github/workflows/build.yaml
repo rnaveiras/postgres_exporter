@@ -1,17 +1,27 @@
 ---
-name: Go
+name: Build
+
 on: [push]
+
 jobs:
+  linter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@master
+        with:
+          dockerfile: "Dockerfile"
   mod-tidy:
     name: mod-tidy
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.4.0
       - name: set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v2.2.0
         with:
-          go-version: 1.15.6
+          go-version: 1.17.7
         id: go
       - name: go mod tidy
         run: go mod tidy
@@ -26,12 +36,13 @@ jobs:
     needs: [mod-tidy]
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.4.0
       - name: set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v2.2.0
         with:
-          go-version: 1.15.6
+          go-version: 1.17.7
         id: go
+      - run: go version
       - name: Promu
         run: make promu
       - name: Build
