@@ -77,7 +77,7 @@ func main() {
 	}
 
 	http.Handle(*metricsPath, metricsHandler(logger, connConfig))
-	http.Handle("/", catchHandler(metricsPath))
+	http.Handle("/", catchHandler(logger, metricsPath))
 
 	level.Info(logger).Log("component", "web", "msg", "Start listening for connections", "address", *listenAddress)
 	err = http.ListenAndServe(*listenAddress, nil)
@@ -87,17 +87,18 @@ func main() {
 	}
 }
 
-func catchHandler(meticsPath *string) http.Handler {
+func catchHandler(logger kitlog.Logger, meticsPath *string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`<html>
+		_, err := w.Write([]byte(`<html>
                <head><title>postgres Exporter</title></head>
                <body>
                <h1>Postgres Exporter</h1>
                <p><a href="` + *metricsPath + `">Metrics</a></p>
                </body>
                </html>`))
+		level.Error(logger).Log("error", err)
 	})
 }
 
