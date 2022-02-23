@@ -1,3 +1,11 @@
+## Version 0.10.0 / 2020-02-23
+
+[full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.9.0...v0.10.0)
+
+* Add metrics from pg_stat_user_indexes ([#88](https://github.com/rnaveiras/postgres_exporter/pull/88))
+* Replace Replace go-kit/kit with go-kit/log ([#94](https://github.com/rnaveiras/postgres_exporter/pull/95))
+* Support postgresql 12/13 ([#85](https://github.com/rnaveiras/postgres_exporter/pull/85))
+
 ## Version 0.9.0 / 2021-04-13
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.8.0...v0.9.0)
