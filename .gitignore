@@ -2,3 +2,4 @@
 /debug*
 .build/
 docker-compose.yaml
+dist/
