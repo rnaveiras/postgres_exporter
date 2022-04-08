@@ -84,7 +84,7 @@ jobs:
             type=ref,event=tag
             type=semver,pattern={{version}}
 
-      - uses: docker/build-push-action@v2.8.0
+      - uses: docker/build-push-action@v2.10.0
         with:
           cache-from: type=gha
           cache-to: type=gha,mode=max
