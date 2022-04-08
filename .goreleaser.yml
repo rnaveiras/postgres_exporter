@@ -17,3 +17,8 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
+
+    ignore:
+      - goos: linux
+        goarch: arm
