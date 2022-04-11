@@ -79,7 +79,30 @@ Prometheus exporter for PostgreSQL server metrics.
 
 ### Run
 
+#### Passing in a libpq connection string
+
 ```
 ./postgres_exporter \
     --db.data-source="user=postgres host=/var/run/postgresql"
+```
+
+#### Using the PG* environment variables
+
+- Set the [libpq PG* envvars](https://www.postgresql.org/docs/current/libpq-envars.html) like so:
+
+```
+export PGHOST=/var/run/postgresql
+export PGUSER=postgres
+```
+
+- or in a [pgservicefile](https://www.postgresql.org/docs/current/libpq-pgservice.html)
+
+```
+export PGSERVICEFILE=/var/run/cloudsql/pg_service.conf
+```
+
+- then, invoke the `postgres_exporter` binary
+
+```
+./postgres_exporter
 ```

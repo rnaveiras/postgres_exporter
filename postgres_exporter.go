@@ -20,16 +20,12 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const (
-	defaultDSN string = "user=postgres host=/var/run/postgresql"
-)
-
 var handlerLock sync.Mutex
 
 var (
 	listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default("0.0.0.0:9187").String()
 	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
-	dataSource    = kingpin.Flag("db.data-source", "libpq compatible data source").Default(defaultDSN).String()
+	dataSource    = kingpin.Flag("db.data-source", "libpq compatible data source, e.g `user=postgres host=/var/run/postgresql`. Leave this blank to read connection information from PG* environment variables").String()
 	logLevel      = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
 )
 
