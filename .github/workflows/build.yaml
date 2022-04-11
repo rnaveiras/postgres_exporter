@@ -1,7 +1,13 @@
 ---
 name: Build
 
-on: [push]
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+  pull_request:
 
 env:
   REGISTRY: ghcr.io
