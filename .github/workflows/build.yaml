@@ -8,7 +8,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
   # true when a push on the main branch
   PUSH_ARTIFACT: |
-    ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request' }}
 
 jobs:
   linter:
