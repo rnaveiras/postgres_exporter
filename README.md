@@ -58,6 +58,10 @@ Prometheus exporter for PostgreSQL server metrics.
 | postgres_stat_database_xact_commit_total | Number of transactions in this database that have been committed | datname |
 | postgres_stat_database_xact_rollback_total | Number of transactions in this database that have been rolled back | datname |
 | postgres_stat_replication_lag_bytes | Replication Lag in bytes | application_name, client_addr, state, sync_state |
+| postgres_standby_wal_replay_lag_seconds | Replication lag measured in seconds on the standby. Measured as `EXTRACT (EPOCH FROM now()) - pg_last_xact_replay_timestamp()`  | application_name, client_addr, state, sync_state |
+| postgres_stat_replication_flush_lag_seconds | Elapsed time during committed WALs from primary to the standby (WAL's has already been flushed but not yet applied). Reported from the primary node. *Only available on Posgres versions > 9x*. | application_name, client_addr, state, sync_state |
+| postgres_stat_replication_replay_lag_seconds | Elapsed time during committed WALs from primary to the standby (fully committed in standby node). Reported from the primary node. *Only available on Posgres versions > 9x*. | application_name, client_addr, state, sync_state |
+| postgres_stat_replication_write_lag_seconds | Elapsed time during committed WALs from primary to the standby (but not yet committed in the standby). Reported from the primary node. *Only available on Posgres versions > 9x*. | application_name, client_addr, state, sync_state |
 | postgres_stat_vacuum_progress_heap_blks_scanned | Number of heap blocks scanned | pid, query_start, schemaname, datname, relname |
 | postgres_stat_vacuum_progress_heap_blks_total | Total number of heap blocks in the table | pid, query_start, schemaname, datname, relname |
 | postgres_stat_vacuum_progress_heap_blks_vacuumed | Number of heap blocks vacuumed | pid, query_start, schemaname, datname, relname |
