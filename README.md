@@ -79,6 +79,7 @@ Prometheus exporter for PostgreSQL server metrics.
 | postgres_stat_user_indexes_tuple_read_total | Number of times tuples have been returned from scanning this index | datname, schemaname, tablename, indexname |
 | postgres_stat_user_indexes_tuple_fetch_total | Number of live tuples fetched by scans on this index | datname, schemaname, tablename, indexname |
 | postgres_wal_receiver_replay_lag_seconds | Replication lag measured in seconds on the standby. Measured as `EXTRACT (EPOCH FROM now()) - pg_last_xact_replay_timestamp()`  | status |
+| postgres_wal_receiver_replay_lag_bytes | Replication lag measured in bytes on the standby. Measured as `pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn())::float`  | status |
 | postgres_up | Whether the Postgres server is up | |
 
 

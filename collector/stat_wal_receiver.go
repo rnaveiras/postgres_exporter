@@ -16,6 +16,8 @@ const (
 	statWalReceiver = `
 WITH pg_wal_receiver AS (
   SELECT status
+       , pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn())::float 
+	     as postgres_wal_receiver_replay_bytes
 	   , ( 
 		CASE WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn()
 		THEN 0
@@ -28,12 +30,19 @@ SELECT * FROM pg_wal_receiver WHERE postgres_wal_receiver_replay_lag IS NOT NULL
 )
 
 type statWalReceiverScraper struct {
-	walReceiverReplayLag *prometheus.Desc
+	walReceiverReplayBytes *prometheus.Desc
+	walReceiverReplayLag   *prometheus.Desc
 }
 
 // NewStatWalReceiverScraper returns a new Scraper exposing postgres pg_stat_replication
 func NewWalReceiverScraper() Scraper {
 	return &statWalReceiverScraper{
+		walReceiverReplayBytes: prometheus.NewDesc(
+			"postgres_wal_receiver_replay_lag_bytes",
+			"delay in standby wal replay bytes pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn())::float",
+			[]string{"status"},
+			nil,
+		),
 		walReceiverReplayLag: prometheus.NewDesc(
 			"postgres_wal_receiver_replay_lag_seconds",
 			"delay in standby wal replay seconds EXTRACT (EPOCH FROM now() - pg_last_xact_replay_timestamp()",
@@ -59,15 +68,21 @@ func (c *statWalReceiverScraper) Scrape(ctx context.Context, conn *pgx.Conn, ver
 	defer rows.Close()
 
 	var status string
-	var pgWalReceiverReplayLag float64
+	var pgWalReceiverReplayBytes, pgWalReceiverReplayLag float64
 
 	for rows.Next() {
 
 		if err := rows.Scan(&status,
+			&pgWalReceiverReplayBytes,
 			&pgWalReceiverReplayLag); err != nil {
 
 			return err
 		}
+		// postgres_wal_receiver_replay_lag_bytes
+		ch <- prometheus.MustNewConstMetric(c.walReceiverReplayBytes,
+			prometheus.GaugeValue,
+			pgWalReceiverReplayBytes,
+			status)
 		// postgres_wal_receiver_replay_lag_seconds
 		ch <- prometheus.MustNewConstMetric(c.walReceiverReplayLag,
 			prometheus.GaugeValue,
