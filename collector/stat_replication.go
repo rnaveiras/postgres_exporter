@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"net"
 
 	pgx "github.com/jackc/pgx/v4"
@@ -25,11 +26,6 @@ WITH pg_replication AS (
            ELSE pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::float
 		   END
 	     ) AS pg_xlog_location_diff
-	   , ( CASE WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn()
-		 THEN 0
-		 ELSE EXTRACT (EPOCH FROM now() - pg_last_xact_replay_timestamp())
-		 END
-	   ) as pg_standby_wal_replay_lag
 	   , EXTRACT (EPOCH FROM write_lag) as write_lag_seconds
 	   , EXTRACT (EPOCH FROM flush_lag) as flush_lag_seconds
 	   , EXTRACT (EPOCH FROM replay_lag) as replay_lag_seconds
@@ -39,11 +35,10 @@ SELECT * FROM pg_replication WHERE pg_xlog_location_diff IS NOT NULL /*postgres_
 )
 
 type statReplicationScraper struct {
-	lagBytes            *prometheus.Desc
-	standbyWalReplayLag *prometheus.Desc
-	writeLag            *prometheus.Desc
-	flushLag            *prometheus.Desc
-	replayLag           *prometheus.Desc
+	lagBytes  *prometheus.Desc
+	writeLag  *prometheus.Desc
+	flushLag  *prometheus.Desc
+	replayLag *prometheus.Desc
 }
 
 // NewStatReplicationScraper returns a new Scraper exposing postgres pg_stat_replication
@@ -52,12 +47,6 @@ func NewStatReplicationScraper() Scraper {
 		lagBytes: prometheus.NewDesc(
 			"postgres_stat_replication_lag_bytes",
 			"delay in bytes pg_wal_lsn_diff(pg_current_wal_lsn(), replay_location)",
-			[]string{"application_name", "client_addr", "state", "sync_state"},
-			nil,
-		),
-		standbyWalReplayLag: prometheus.NewDesc(
-			"postgres_standby_wal_replay_lag_seconds",
-			"delay in standby wal replay seconds EXTRACT (EPOCH FROM now() - pg_last_xact_replay_timestamp()",
 			[]string{"application_name", "client_addr", "state", "sync_state"},
 			nil,
 		),
@@ -99,7 +88,11 @@ func (c *statReplicationScraper) Scrape(ctx context.Context, conn *pgx.Conn, ver
 
 	var applicationName, state, syncState string
 	var clientAddr net.IP
-	var pgXlogLocationDiff, pgStandbyWalReplayLag, writeLagSeconds, flushLagSeconds, replayLagSeconds float64
+	var pgXlogLocationDiff float64
+	/* When querying pg_stat_replication it may be that we don't have
+	   values for the various lags as they vanish are a period of inactivity
+	*/
+	var writeLagSeconds, flushLagSeconds, replayLagSeconds sql.NullFloat64
 
 	for rows.Next() {
 
@@ -108,7 +101,6 @@ func (c *statReplicationScraper) Scrape(ctx context.Context, conn *pgx.Conn, ver
 			&state,
 			&syncState,
 			&pgXlogLocationDiff,
-			&pgStandbyWalReplayLag,
 			&writeLagSeconds,
 			&flushLagSeconds,
 			&replayLagSeconds); err != nil {
@@ -124,41 +116,38 @@ func (c *statReplicationScraper) Scrape(ctx context.Context, conn *pgx.Conn, ver
 			state,
 			syncState)
 
-		// postgres_standby_wal_replay_lag_seconds
-		ch <- prometheus.MustNewConstMetric(c.standbyWalReplayLag,
-			prometheus.GaugeValue,
-			pgStandbyWalReplayLag,
-			applicationName,
-			clientAddr.String(),
-			state,
-			syncState)
+		if writeLagSeconds.Valid {
+			// postgres_stat_replication_write_lag_seconds
+			ch <- prometheus.MustNewConstMetric(c.writeLag,
+				prometheus.GaugeValue,
+				writeLagSeconds.Float64,
+				applicationName,
+				clientAddr.String(),
+				state,
+				syncState)
+		}
 
-		// postgres_stat_replication_write_lag_seconds
-		ch <- prometheus.MustNewConstMetric(c.writeLag,
-			prometheus.GaugeValue,
-			writeLagSeconds,
-			applicationName,
-			clientAddr.String(),
-			state,
-			syncState)
+		if flushLagSeconds.Valid {
+			// postgres_stat_replication_flush_lag_seconds
+			ch <- prometheus.MustNewConstMetric(c.flushLag,
+				prometheus.GaugeValue,
+				flushLagSeconds.Float64,
+				applicationName,
+				clientAddr.String(),
+				state,
+				syncState)
+		}
 
-		// postgres_stat_replication_flush_lag_seconds
-		ch <- prometheus.MustNewConstMetric(c.flushLag,
-			prometheus.GaugeValue,
-			flushLagSeconds,
-			applicationName,
-			clientAddr.String(),
-			state,
-			syncState)
-
-		// postgres_stat_replication_replay_lag_seconds
-		ch <- prometheus.MustNewConstMetric(c.replayLag,
-			prometheus.GaugeValue,
-			replayLagSeconds,
-			applicationName,
-			clientAddr.String(),
-			state,
-			syncState)
+		if replayLagSeconds.Valid {
+			// postgres_stat_replication_replay_lag_seconds
+			ch <- prometheus.MustNewConstMetric(c.replayLag,
+				prometheus.GaugeValue,
+				replayLagSeconds.Float64,
+				applicationName,
+				clientAddr.String(),
+				state,
+				syncState)
+		}
 	}
 	err = rows.Err()
 	if err != nil {
