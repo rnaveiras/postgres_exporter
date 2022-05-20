@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
-	github.com/go-kit/log v0.2.0
+	github.com/go-kit/log v0.2.1
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/jackc/pgx/v4 v4.16.1
 	github.com/kr/text v0.2.0 // indirect
