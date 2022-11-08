@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	// _ "net/http/pprof"
 
@@ -76,7 +77,12 @@ func main() {
 	http.Handle("/", catchHandler(logger, metricsPath))
 
 	level.Info(logger).Log("component", "web", "msg", "Start listening for connections", "address", *listenAddress)
-	err = http.ListenAndServe(*listenAddress, nil)
+
+	server := &http.Server{
+		Addr:              *listenAddress,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	err = server.ListenAndServe()
 	if err != nil {
 		level.Error(logger).Log("error", err)
 		os.Exit(1)
