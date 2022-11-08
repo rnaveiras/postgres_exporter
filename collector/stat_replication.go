@@ -8,10 +8,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-/* When pg_basebackup is running in stream mode, it opens a second connection
-to the server and starts streaming the transaction log in parallel while
-running the backup. In both connections (state=backup and state=streaming) the
-pg_log_location_diff is null and it requires to be excluded */
+// When pg_basebackup is running in stream mode, it opens a second connection
+// to the server and starts streaming the transaction log in parallel while
+// running the backup. In both connections (state=backup and state=streaming) the
+// pg_log_location_diff is null and it requires to be excluded
 const (
 	// Scrape query
 	statReplicationLagBytes9x = `
