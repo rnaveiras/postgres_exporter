@@ -13,7 +13,7 @@ import (
 // individual-row terms. It also tracks the total number of rows in each table, and information about vacuum
 // and analyze actions for each table. It can also count calls to user-defined functions and the total time
 // spent in each one.
-//https://www.postgresql.org/docs/9.4/static/monitoring-stats.html#PG-STAT-ALL-INDEXES-VIEW
+// https://www.postgresql.org/docs/9.4/static/monitoring-stats.html#PG-STAT-ALL-INDEXES-VIEW
 const (
 	// Scrape query
 	statUserIndexesQuery = `
