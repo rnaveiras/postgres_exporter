@@ -1,4 +1,4 @@
-## Version 0.10.0 / 2020-02-23
+## Version 0.10.0 / 2022-02-23
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.9.0...v0.10.0)
 

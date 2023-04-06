@@ -101,6 +101,7 @@ func NewExporter(ctx context.Context, logger kitlog.Logger, connConfig *pgx.Conn
 			NewStatBgwriterScraper(),
 			NewStatDatabaseScraper(),
 			NewStatReplicationScraper(),
+			NewWalReceiverScraper(),
 		},
 		datnameScrapers: []Scraper{
 			NewStatVacuumProgressScraper(),
