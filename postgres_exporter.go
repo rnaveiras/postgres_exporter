@@ -89,7 +89,7 @@ func main() {
 	}
 }
 
-func catchHandler(logger kitlog.Logger, meticsPath *string) http.Handler {
+func catchHandler(logger kitlog.Logger, metricsPath *string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
