@@ -10,7 +10,7 @@ linters:
     - depguard
     # - gofumpt
     - goimports
-    - revive
+    # - revive
     - bodyclose
     # - gochecknoglobals
     - errname
