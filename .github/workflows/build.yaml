@@ -90,7 +90,7 @@ jobs:
             type=ref,event=tag
             type=semver,pattern={{version}}
 
-      - uses: docker/build-push-action@v4.0.0
+      - uses: docker/build-push-action@v4.1.1
         with:
           cache-from: type=gha
           cache-to: type=gha,mode=max
