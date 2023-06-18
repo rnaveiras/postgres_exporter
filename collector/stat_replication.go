@@ -90,7 +90,6 @@ func (c *statReplicationScraper) Scrape(ctx context.Context, conn *pgx.Conn, ver
 			&state,
 			&syncState,
 			&pgXlogLocationDiff); err != nil {
-
 			return err
 		}
 

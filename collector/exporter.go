@@ -40,11 +40,13 @@ var (
 	)
 )
 
-const infoQuery = `SHOW server_version /*postgres_exporter*/`
-const listDatnameQuery = `
+const (
+	infoQuery        = `SHOW server_version /*postgres_exporter*/`
+	listDatnameQuery = `
 SELECT datname FROM pg_database
 WHERE datallowconn = true AND datistemplate = false
 AND datname != 'cloudsqladmin' /*postgres_exporter*/`
+)
 
 // Scraper is the interface each scraper has to implement.
 type Scraper interface {
