@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.17.7-alpine3.15 as builder
+FROM golang:1.22.1-alpine3.19 as builder
 
-ENV PROMU_SHA256=41bdeadd6bb761058adc82e1c0fc9951ca3eac9d0556d29bdf01993f7afd1f57 \
-    PROMU_VERSION=0.13.0
+ENV PROMU_SHA256=f92fd94dbd5941c7f2925860c3d6a1f24b7630cb2b192df43835c8dda9e76b5d \
+    PROMU_VERSION=0.15.0
 
 SHELL ["/bin/ash", "-euox", "pipefail", "-c"]
 
@@ -22,7 +22,7 @@ RUN set -x \
   && promu build --verbose --prefix=./output \
   && find ./output
 
-FROM alpine:3.15
+FROM alpine:3.19
 LABEL maintainer="Raul Naveiras <rnaveiras@gmail.com>"
 
 COPY --from=builder /go/src/app/output/postgres_exporter /bin/postgres_exporter
