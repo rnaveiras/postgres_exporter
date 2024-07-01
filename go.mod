@@ -7,6 +7,6 @@ require (
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
-	github.com/prometheus/common v0.48.0
+	github.com/prometheus/common v0.55.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
