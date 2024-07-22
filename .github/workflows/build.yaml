@@ -70,7 +70,7 @@ jobs:
       packages: write
       contents: read
     steps:
-      - uses: docker/setup-buildx-action@v3.3.0
+      - uses: docker/setup-buildx-action@v3.5.0
         with:
           install: true
 
