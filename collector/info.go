@@ -52,11 +52,11 @@ func NewInfoScraper() Scraper {
 	}
 }
 
-func (c *infoScraper) Name() string {
+func (*infoScraper) Name() string {
 	return "InfoScraper"
 }
 
-func (c *infoScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
+func (c *infoScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
 	var recovery, backup int64
 	var startTime, configLoadTime time.Time
 

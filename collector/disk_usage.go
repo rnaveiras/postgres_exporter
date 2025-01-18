@@ -45,11 +45,11 @@ func NewDiskUsageScraper() Scraper {
 	}
 }
 
-func (c *diskUsageScraper) Name() string {
+func (*diskUsageScraper) Name() string {
 	return "DiskUsageScraper"
 }
 
-func (c *diskUsageScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
+func (c *diskUsageScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
 	var datname, schemaname, tablename, indexname string
 	var sizeBytes float64
 	var rows pgx.Rows

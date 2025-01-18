@@ -8,6 +8,10 @@ import (
 )
 
 const (
+	// metricEnabled represent the value used when a metrics state is
+	// active/enabled
+	metricEnabled = 1.0
+
 	// Scrape query
 	statVacuumProgress = `
 SELECT V.pid::text
@@ -135,11 +139,11 @@ func NewStatVacuumProgressScraper() Scraper {
 	}
 }
 
-func (c *statVacuumProgressScraper) Name() string {
+func (*statVacuumProgressScraper) Name() string {
 	return "StatVacuumProgressScraper"
 }
 
-func (c *statVacuumProgressScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
+func (c *statVacuumProgressScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
 	rows, err := conn.Query(ctx, statVacuumProgress)
 	if err != nil {
 		return err
@@ -166,30 +170,38 @@ func (c *statVacuumProgressScraper) Scrape(ctx context.Context, conn *pgx.Conn, 
 		}
 
 		// postgres_stat_vacuum_progress_running
-		ch <- prometheus.MustNewConstMetric(c.running, prometheus.GaugeValue, 1, pid, queryStart, schemaname, datname, relname)
+		ch <- prometheus.MustNewConstMetric(c.running, prometheus.GaugeValue, metricEnabled,
+			pid, queryStart, schemaname, datname, relname)
 
 		switch phase {
 		case "initializing":
 			// postgres_stat_vacuum_progress_phase_initializing
-			ch <- prometheus.MustNewConstMetric(c.phaseInitializing, prometheus.GaugeValue, 1, pid, queryStart, schemaname, datname, relname)
+			ch <- prometheus.MustNewConstMetric(c.phaseInitializing, prometheus.GaugeValue, metricEnabled,
+				pid, queryStart, schemaname, datname, relname)
 		case "scanning heap":
 			// postgres_stat_vacuum_progress_phase_scanning_heap
-			ch <- prometheus.MustNewConstMetric(c.phaseScanningHeap, prometheus.GaugeValue, 1, pid, queryStart, schemaname, datname, relname)
+			ch <- prometheus.MustNewConstMetric(c.phaseScanningHeap, prometheus.GaugeValue, metricEnabled,
+				pid, queryStart, schemaname, datname, relname)
 		case "vacuuming indexes":
 			// postgres_stat_vacuum_progress_phase_vacuuming_indexes
-			ch <- prometheus.MustNewConstMetric(c.phaseVacuumingIndexes, prometheus.GaugeValue, 1, pid, queryStart, schemaname, datname, relname)
+			ch <- prometheus.MustNewConstMetric(c.phaseVacuumingIndexes, prometheus.GaugeValue, metricEnabled,
+				pid, queryStart, schemaname, datname, relname)
 		case "vacuuming heap":
 			// postgres_stat_vacuum_progress_phase_vacuuming_heap
-			ch <- prometheus.MustNewConstMetric(c.phaseVacuumingHeap, prometheus.GaugeValue, 1, pid, queryStart, schemaname, datname, relname)
+			ch <- prometheus.MustNewConstMetric(c.phaseVacuumingHeap, prometheus.GaugeValue, metricEnabled,
+				pid, queryStart, schemaname, datname, relname)
 		case "cleaning up indexes":
 			// postgres_stat_vacuum_progress_phase_cleaning_up_indexes
-			ch <- prometheus.MustNewConstMetric(c.phaseCleaningUpIndexes, prometheus.GaugeValue, 1, pid, queryStart, schemaname, datname, relname)
+			ch <- prometheus.MustNewConstMetric(c.phaseCleaningUpIndexes, prometheus.GaugeValue, metricEnabled,
+				pid, queryStart, schemaname, datname, relname)
 		case "truncating heap":
 			// postgres_stat_vacuum_progress_phase_truncating_heap
-			ch <- prometheus.MustNewConstMetric(c.phaseTruncatingHeap, prometheus.GaugeValue, 1, pid, queryStart, schemaname, datname, relname)
+			ch <- prometheus.MustNewConstMetric(c.phaseTruncatingHeap, prometheus.GaugeValue, metricEnabled,
+				pid, queryStart, schemaname, datname, relname)
 		case "performing final cleanup":
 			// postgres_stat_vacuum_progress_phase_performing_final_cleanup
-			ch <- prometheus.MustNewConstMetric(c.phasePerformingFinalCleanup, prometheus.GaugeValue, 1, pid, queryStart, schemaname, datname, relname)
+			ch <- prometheus.MustNewConstMetric(c.phasePerformingFinalCleanup, prometheus.GaugeValue, metricEnabled,
+				pid, queryStart, schemaname, datname, relname)
 		}
 
 		// postgres_stat_vacuum_progress_heap_blks_total

@@ -150,11 +150,11 @@ func NewStatDatabaseScraper() Scraper {
 	}
 }
 
-func (c *statDatabaseScraper) Name() string {
+func (*statDatabaseScraper) Name() string {
 	return "StatDatabaseScraper"
 }
 
-func (c *statDatabaseScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
+func (c *statDatabaseScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
 	rows, err := conn.Query(ctx, statDatabaseQuery)
 	if err != nil {
 		return err

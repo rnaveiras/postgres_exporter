@@ -13,6 +13,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	versionBitSize   = 64
+	infoQuery        = `SHOW server_version /*postgres_exporter*/`
+	listDatnameQuery = `
+SELECT datname FROM pg_database
+WHERE datallowconn = true AND datistemplate = false
+AND datname != 'cloudsqladmin' /*postgres_exporter*/`
+	successValue    = 1.0
+	failureValue    = 0.0
+	infoMetricValue = 1.0
+	levelError      = "error" // Used for error logging
+)
+
 var (
 	upDesc = prometheus.NewDesc(
 		"postgres_up",
@@ -40,14 +53,6 @@ var (
 	)
 )
 
-const (
-	infoQuery        = `SHOW server_version /*postgres_exporter*/`
-	listDatnameQuery = `
-SELECT datname FROM pg_database
-WHERE datallowconn = true AND datistemplate = false
-AND datname != 'cloudsqladmin' /*postgres_exporter*/`
-)
-
 // Scraper is the interface each scraper has to implement.
 type Scraper interface {
 	Name() string
@@ -70,7 +75,7 @@ type Version struct {
 
 func NewVersion(v string) Version {
 	values := strings.Split(v, " ")
-	version, _ := strconv.ParseFloat(values[0], 64)
+	version, _ := strconv.ParseFloat(values[0], versionBitSize)
 	return Version{
 		version: version,
 	}
@@ -114,7 +119,7 @@ func NewExporter(ctx context.Context, logger kitlog.Logger, connConfig *pgx.Conn
 }
 
 // Describe implements the prometheus.Collector interface.
-func (e Exporter) Describe(ch chan<- *prometheus.Desc) {
+func (Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
 	ch <- scrapeSuccessDesc
 }
@@ -123,31 +128,31 @@ func (e Exporter) Describe(ch chan<- *prometheus.Desc) {
 func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 	conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 	if err != nil {
-		ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, 0)
-		level.Error(e.logger).Log("error", err)
+		ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, failureValue)
+		level.Error(e.logger).Log(levelError, err)
 		return // cannot continue without a valid connection
 	}
 
 	defer conn.Close(e.ctx)
 	// postgres_up
-	ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, 1)
+	ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, successValue)
 
 	var version string
 	if err := conn.QueryRow(e.ctx, infoQuery).Scan(&version); err != nil {
-		level.Error(e.logger).Log("error", err)
+		level.Error(e.logger).Log(levelError, err)
 		return // cannot continue without a version
 	}
 
 	v := NewVersion(version)
 	// postgres_info
-	ch <- prometheus.MustNewConstMetric(infoDesc, prometheus.GaugeValue, 1, v.String())
+	ch <- prometheus.MustNewConstMetric(infoDesc, prometheus.GaugeValue, infoMetricValue, v.String())
 
 	// discovery databases
 	var dbnames []string
 
 	rows, err := conn.Query(e.ctx, listDatnameQuery)
 	if err != nil {
-		level.Error(e.logger).Log("error", err)
+		level.Error(e.logger).Log(levelError, err)
 		return
 	}
 	defer rows.Close()
@@ -156,7 +161,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 		var dbname string
 		err := rows.Scan(&dbname)
 		if err != nil {
-			level.Error(e.logger).Log("error", err)
+			level.Error(e.logger).Log(levelError, err)
 			return
 		}
 		dbnames = append(dbnames, dbname)
@@ -175,7 +180,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 		// establish a new connection
 		conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 		if err != nil {
-			level.Error(e.logger).Log("error", err)
+			level.Error(e.logger).Log(levelError, err)
 			return // cannot continue without a valid connection
 		}
 
@@ -197,11 +202,11 @@ func (e Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch ch
 
 	logger := kitlog.With(e.logger, "scraper", scraper.Name(), "duration", duration.Seconds())
 	if err != nil {
-		logger.Log("error", err)
-		success = 0
+		logger.Log(levelError, err)
+		success = successValue
 	} else {
 		level.Debug(logger).Log("event", "scraper.success")
-		success = 1
+		success = failureValue
 	}
 
 	datname := e.connConfig.Config.Database

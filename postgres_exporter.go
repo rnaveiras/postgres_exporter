@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	stdlog "log"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	// _ "net/http/pprof"
@@ -21,13 +25,23 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+const (
+	readHeaderTimeout = 3 * time.Second
+	levelError        = "error" // Used for error logging
+	exitCodeError     = 1
+)
+
 var handlerLock sync.Mutex
 
 var (
-	listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default("0.0.0.0:9187").String()
-	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
-	dataSource    = kingpin.Flag("db.data-source", "libpq compatible data source, e.g `user=postgres host=/var/run/postgresql`. Leave this blank to read connection information from PG* environment variables").String()
-	logLevel      = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
+	listenAddress = kingpin.Flag("web.listen-address",
+		"Address on which to expose metrics and web interface.").Default("0.0.0.0:9187").String()
+	metricsPath = kingpin.Flag("web.telemetry-path",
+		"Path under which to expose metrics.").Default("/metrics").String()
+	dataSource = kingpin.Flag("db.data-source",
+		"libpq compatible data source, e.g `user=postgres host=/var/run/postgresql`. Leave blank for libpq envs").String()
+	logLevel = kingpin.Flag("log.level",
+		"Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
 )
 
 func main() {
@@ -38,8 +52,8 @@ func main() {
 	logger := kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
 	l, err := setlogLevel(*logLevel)
 	if err != nil {
-		level.Error(logger).Log("error", err)
-		os.Exit(1)
+		level.Error(logger).Log(levelError, err)
+		os.Exit(exitCodeError)
 	}
 
 	logger = level.NewFilter(logger, l)
@@ -51,8 +65,8 @@ func main() {
 
 	connConfig, err := pgx.ParseConfig(*dataSource)
 	if err != nil {
-		level.Error(logger).Log("error", err)
-		os.Exit(1)
+		level.Error(logger).Log(levelError, err)
+		os.Exit(exitCodeError)
 	}
 
 	level.Info(logger).Log("user", connConfig.User, "host", connConfig.Host, "dbname", connConfig.Database)
@@ -68,8 +82,8 @@ func main() {
 	if *logLevel != "info" {
 		connConfig.LogLevel, err = pgx.LogLevelFromString(*logLevel)
 		if err != nil {
-			level.Error(logger).Log("error", err)
-			os.Exit(1)
+			level.Error(logger).Log(levelError, err)
+			os.Exit(exitCodeError)
 		}
 	}
 
@@ -80,17 +94,17 @@ func main() {
 
 	server := &http.Server{
 		Addr:              *listenAddress,
-		ReadHeaderTimeout: 3 * time.Second,
+		ReadHeaderTimeout: readHeaderTimeout,
+		BaseContext:       func(_ net.Listener) context.Context { return ctx },
 	}
 	err = server.ListenAndServe()
 	if err != nil {
 		level.Error(logger).Log("error", err)
-		os.Exit(1)
 	}
 }
 
 func catchHandler(logger kitlog.Logger, metricsPath *string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`<html>
