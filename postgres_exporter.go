@@ -6,9 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	// _ "net/http/pprof"
@@ -95,7 +93,7 @@ func main() {
 	server := &http.Server{
 		Addr:              *listenAddress,
 		ReadHeaderTimeout: readHeaderTimeout,
-		BaseContext:       func(_ net.Listener) context.Context { return ctx },
+		BaseContext:       func(_ net.Listener) context.Context { return context.Background() },
 	}
 	err = server.ListenAndServe()
 	if err != nil {
