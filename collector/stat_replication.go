@@ -8,6 +8,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const pgVersion float64 = 10
+
 // When pg_basebackup is running in stream mode, it opens a second connection
 // to the server and starts streaming the transaction log in parallel while
 // running the backup. In both connections (state=backup and state=streaming) the
@@ -61,7 +63,7 @@ func NewStatReplicationScraper() Scraper {
 	}
 }
 
-func (c *statReplicationScraper) Name() string {
+func (*statReplicationScraper) Name() string {
 	return "StatReplicationScraper"
 }
 
@@ -69,7 +71,7 @@ func (c *statReplicationScraper) Scrape(ctx context.Context, conn *pgx.Conn, ver
 	var rows pgx.Rows
 	var err error
 
-	if version.Gte(10) {
+	if version.Gte(pgVersion) {
 		rows, err = conn.Query(ctx, statReplicationLagBytes)
 	} else {
 		rows, err = conn.Query(ctx, statReplicationLagBytes9x)

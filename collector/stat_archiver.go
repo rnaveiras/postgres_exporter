@@ -47,11 +47,11 @@ func NewStatArchiverScraper() Scraper {
 	}
 }
 
-func (c *statArchiverScraper) Name() string {
+func (*statArchiverScraper) Name() string {
 	return "StatArchiverScraper"
 }
 
-func (c *statArchiverScraper) Scrape(ctx context.Context, db *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
+func (c *statArchiverScraper) Scrape(ctx context.Context, db *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
 	var archivedCount, failedCount int64
 	var statsReset time.Time
 

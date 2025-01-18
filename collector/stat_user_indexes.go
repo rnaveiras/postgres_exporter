@@ -58,11 +58,11 @@ func NewStatUserIndexesScraper() Scraper {
 	}
 }
 
-func (c *statUserIndexesScraper) Name() string {
+func (*statUserIndexesScraper) Name() string {
 	return "StatUserIndexesScraper"
 }
 
-func (c *statUserIndexesScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
+func (c *statUserIndexesScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
 	var datname string
 	if err := conn.QueryRow(ctx, "SELECT current_database() /*postgres_exporter*/").Scan(&datname); err != nil {
 		return err

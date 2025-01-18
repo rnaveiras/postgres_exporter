@@ -186,11 +186,11 @@ func NewStatUserTablesScraper() Scraper {
 	}
 }
 
-func (c *statUserTablesScraper) Name() string {
+func (*statUserTablesScraper) Name() string {
 	return "StatUserTablesScraper"
 }
 
-func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
+func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
 	var datname string
 	if err := conn.QueryRow(ctx, "SELECT current_database() /*postgres_exporter*/").Scan(&datname); err != nil {
 		return err

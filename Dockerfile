@@ -1,8 +1,7 @@
-# syntax=docker/dockerfile:1
-FROM golang:1.22.1-alpine3.19 as builder
+FROM golang:1.23.5-alpine3.21 AS builder
 
 ENV PROMU_SHA256=f92fd94dbd5941c7f2925860c3d6a1f24b7630cb2b192df43835c8dda9e76b5d \
-    PROMU_VERSION=0.15.0
+  PROMU_VERSION=0.15.0
 
 SHELL ["/bin/ash", "-euox", "pipefail", "-c"]
 
@@ -23,7 +22,7 @@ RUN set -x \
   && find ./output
 
 FROM alpine:3.19
-LABEL maintainer="Raul Naveiras <rnaveiras@gmail.com>"
+LABEL org.opencontainers.image.authors="Raul Naveiras <rnaveiras@gmail.com>"
 
 COPY --from=builder /go/src/app/output/postgres_exporter /bin/postgres_exporter
 

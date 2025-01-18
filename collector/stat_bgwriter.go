@@ -111,11 +111,11 @@ func NewStatBgwriterScraper() Scraper {
 	}
 }
 
-func (c *statBgwriterScraper) Name() string {
+func (*statBgwriterScraper) Name() string {
 	return "StatBgwriterScraper"
 }
 
-func (c *statBgwriterScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
+func (c *statBgwriterScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
 	var checkpointsTimedCounter, checkpointsReqCounter,
 		buffersCheckpoint, buffersClean, maxWrittenClean,
 		buffersBackend, buffersBackendFsync, buffersAlloc int64
