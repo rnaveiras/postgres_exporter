@@ -12,6 +12,7 @@ import (
 	// _ "net/http/pprof"
 
 	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -51,14 +52,17 @@ func main() {
 	// os.Exit(exitCodeError)
 	// }
 
-	// logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC, "caller", kitlog.DefaultCaller)
-
-	logger.Info("Starting Postgres exporter", "version", version.Info(), "build_context", version.BuildContext())
+	logger.Info("Starting Postgres exporter", "version", version.Info())
+	logger.Info("", "build_context", version.BuildContext())
 
 	connConfig, err := pgx.ParseConfig(*dataSource)
 	if err != nil {
 		logger.Error("failed parse connection string", slog.Any("error", err))
 		os.Exit(exitCodeError)
+	}
+	connConfig.Tracer = &tracelog.TraceLog{
+		Logger:   &SlogAdapter{logger: logger},
+		LogLevel: tracelog.LogLevelNone,
 	}
 
 	logger.Info("connection string", "user", connConfig.User, "host", connConfig.Host, "dbname", connConfig.Database)
