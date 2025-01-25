@@ -3,12 +3,11 @@ package collector
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
-	kitlog "github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -62,7 +61,7 @@ type Scraper interface {
 
 type Exporter struct {
 	ctx             context.Context
-	logger          kitlog.Logger
+	logger          *slog.Logger
 	connConfig      *pgx.ConnConfig
 	scrapers        []Scraper
 	datnameScrapers []Scraper
@@ -95,7 +94,7 @@ var _ prometheus.Collector = (*Exporter)(nil)
 // NewExporter is called every time we receive a scrape request and knows how
 // to collect metrics using each of the scrapers. It will live only for the
 // duration of the scrape request.
-func NewExporter(ctx context.Context, logger kitlog.Logger, connConfig *pgx.ConnConfig) *Exporter {
+func NewExporter(ctx context.Context, logger *slog.Logger, connConfig *pgx.ConnConfig) *Exporter {
 	return &Exporter{
 		ctx:        ctx,
 		logger:     logger,
@@ -129,7 +128,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 	conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, failureValue)
-		level.Error(e.logger).Log(levelError, err)
+		e.logger.Error("exporter collect", slog.Any("error", err))
 		return // cannot continue without a valid connection
 	}
 
@@ -139,7 +138,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	var version string
 	if err := conn.QueryRow(e.ctx, infoQuery).Scan(&version); err != nil {
-		level.Error(e.logger).Log(levelError, err)
+		e.logger.Error("info query", slog.Any("error", err))
 		return // cannot continue without a version
 	}
 
@@ -152,7 +151,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	rows, err := conn.Query(e.ctx, listDatnameQuery)
 	if err != nil {
-		level.Error(e.logger).Log(levelError, err)
+		e.logger.Error("list datname query", slog.Any("error", err))
 		return
 	}
 	defer rows.Close()
@@ -161,7 +160,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 		var dbname string
 		err := rows.Scan(&dbname)
 		if err != nil {
-			level.Error(e.logger).Log(levelError, err)
+			e.logger.Error("list datname query row scan", slog.Any("error", err))
 			return
 		}
 		dbnames = append(dbnames, dbname)
@@ -180,7 +179,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 		// establish a new connection
 		conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 		if err != nil {
-			level.Error(e.logger).Log(levelError, err)
+			e.logger.Error("pgx new conn", slog.Any("error", err))
 			return // cannot continue without a valid connection
 		}
 
@@ -200,12 +199,12 @@ func (e Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch ch
 
 	var success float64
 
-	logger := kitlog.With(e.logger, "scraper", scraper.Name(), "duration", duration.Seconds())
+	e.logger = e.logger.With("scraper", scraper.Name(), "duration", duration.Seconds())
 	if err != nil {
-		logger.Log(levelError, err)
+		e.logger.Error("failed scrape", slog.Any("error", err))
 		success = successValue
 	} else {
-		level.Debug(logger).Log("event", "scraper.success")
+		e.logger.Debug("", "event", "scraper.success")
 		success = failureValue
 	}
 
