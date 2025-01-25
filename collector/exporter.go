@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	pgx "github.com/jackc/pgx/v4"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

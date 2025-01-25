@@ -7,7 +7,7 @@ import (
 
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	pgx "github.com/jackc/pgx/v4"
+	pgx "github.com/jackc/pgx/v5"
 )
 
 const maxSQLLength = 32
