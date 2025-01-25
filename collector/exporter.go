@@ -174,7 +174,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 	// run datname scrapers
 	for _, dbname := range dbnames {
 		// update connection dbname
-		e.connConfig.Config.Database = dbname
+		e.connConfig.Database = dbname
 
 		// establish a new connection
 		conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
@@ -202,13 +202,11 @@ func (e Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch ch
 	e.logger = e.logger.With("scraper", scraper.Name(), "duration", duration.Seconds())
 	if err != nil {
 		e.logger.Error("failed scrape", slog.Any("error", err))
-		success = successValue
 	} else {
 		e.logger.Debug("", "event", "scraper.success")
-		success = failureValue
 	}
 
-	datname := e.connConfig.Config.Database
+	datname := e.connConfig.Database
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), scraper.Name(), datname)
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, scraper.Name(), datname)
 }

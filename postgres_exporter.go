@@ -14,6 +14,7 @@ import (
 	pgx "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/prometheus/client_golang/prometheus"
+	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"github.com/rnaveiras/postgres_exporter/collector"
@@ -44,7 +45,10 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{}))
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level:     slog.LevelDebug,
+		AddSource: false,
+	}))
 	slog.SetDefault(logger)
 	// l, err := setlogLevel(*logLevel)
 	// if err != nil {
@@ -120,7 +124,7 @@ func metricsHandler(logger *slog.Logger, connConfig *pgx.ConnConfig) http.Handle
 		defer handlerLock.Unlock()
 
 		registry := prometheus.NewRegistry()
-		registry.MustRegister(version.NewCollector("postgres_exporter"))
+		registry.MustRegister(versioncollector.NewCollector("postgres_exporter"))
 		registry.MustRegister(collector.NewExporter(r.Context(), logger, connConfig))
 
 		gatherers := prometheus.Gatherers{
