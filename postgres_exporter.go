@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net"
 	"net/http"
@@ -45,8 +46,9 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
+	logLevel := new(slog.LevelVar)
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level:     slog.LevelDebug,
+		Level:     logLevel,
 		AddSource: false,
 	}))
 	slog.SetDefault(logger)
@@ -89,6 +91,7 @@ func main() {
 
 	http.Handle(*metricsPath, metricsHandler(logger, connConfig))
 	http.Handle("/", catchHandler(logger, metricsPath))
+	http.Handle("/log/level", logLevelHandler(logger, logLevel))
 
 	logger.Info("Start listening for connections", "component", "web", "address", *listenAddress)
 
@@ -144,20 +147,58 @@ func metricsHandler(logger *slog.Logger, connConfig *pgx.ConnConfig) http.Handle
 	})
 }
 
-// func setlogLevel(s string) (level.Option, error) {
-// 	var o level.Option
-// 	switch s {
-// 	case "debug":
-// 		o = level.AllowDebug()
-// 	case "info":
-// 		o = level.AllowInfo()
-// 	case "warn":
-// 		o = level.AllowWarn()
-// 	case "error":
-// 		o = level.AllowError()
-// 	default:
-// 		return level.AllowAll(), errors.Errorf("unrecognized log level %q", s)
-// 	}
+//	func setlogLevel(s string) (level.Option, error) {
+//		var o level.Option
+//		switch s {
+//		case "debug":
+//			o = level.AllowDebug()
+//		case "info":
+//			o = level.AllowInfo()
+//		case "warn":
+//			o = level.AllowWarn()
+//		case "error":
+//			o = level.AllowError()
+//		default:
+//			return level.AllowAll(), errors.Errorf("unrecognized log level %q", s)
+//		}
 //
-// 	return o, nil
-// }
+//		return o, nil
+//	}
+func logLevelHandler(logger *slog.Logger, logLevel *slog.LevelVar) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		type logLevelRequest struct {
+			Level string `json:"level"`
+		}
+
+		if r.Method != http.MethodPatch {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req logLevelRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var level slog.Level
+		switch req.Level {
+		case "debug":
+			level = slog.LevelDebug
+		case "info":
+			level = slog.LevelInfo
+		case "warn":
+			level = slog.LevelWarn
+		case "error":
+			level = slog.LevelError
+		default:
+			http.Error(w, "Invalid log level", http.StatusBadRequest)
+			return
+		}
+
+		logLevel.Set(level)
+		logger.Info("change logger level", "level", level)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(logLevelRequest{Level: req.Level})
+	})
+}
