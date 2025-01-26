@@ -3,7 +3,6 @@ module github.com/rnaveiras/postgres_exporter
 go 1.23
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.55.0

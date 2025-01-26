@@ -10,7 +10,9 @@ import (
 	"sync"
 	"time"
 
-	// _ "net/http/pprof"
+	_ "net/http/pprof"
+
+	// "github.com/felixge/fgprof"
 
 	pgx "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/tracelog"
@@ -42,6 +44,8 @@ var (
 )
 
 func main() {
+	// http.DefaultServeMux.Handle("/debug/fgprof", fgprof.Handler())
+
 	kingpin.Version(version.Print("postgres_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
