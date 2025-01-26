@@ -199,11 +199,13 @@ func (e *Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch c
 
 	var success float64
 
-	e.logger = e.logger.With("scraper", scraper.Name(), "duration", duration.Seconds())
+	logger := e.logger.With("scraper", scraper.Name(), "duration", duration.Seconds())
 	if err != nil {
-		e.logger.Error("failed scrape", slog.Any(errorKey, err))
+		logger.Error("failed scrape", slog.Any(errorKey, err))
+		success = failureValue
 	} else {
-		e.logger.Debug("", "event", "scraper.success")
+		logger.Debug("", "event", "scraper.success")
+		success = successValue
 	}
 
 	datname := e.connConfig.Database
