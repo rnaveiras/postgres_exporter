@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -18,7 +18,7 @@ const (
 	listDatnameQuery = `
 SELECT datname FROM pg_database
 WHERE datallowconn = true AND datistemplate = false
-AND datname != 'cloudsqladmin' /*postgres_exporter*/`
+AND datname != ALL($1) /*postgres_exporter*/`
 	successValue    = 1.0
 	failureValue    = 0.0
 	infoMetricValue = 1.0
@@ -60,11 +60,12 @@ type Scraper interface {
 }
 
 type Exporter struct {
-	ctx             context.Context
-	logger          *slog.Logger
-	connConfig      *pgx.ConnConfig
-	scrapers        []Scraper
-	datnameScrapers []Scraper
+	ctx               context.Context
+	logger            *slog.Logger
+	connConfig        *pgx.ConnConfig
+	scrapers          []Scraper
+	datnameScrapers   []Scraper
+	excludedDatabases []string
 }
 
 // Postgres Version
@@ -94,7 +95,7 @@ var _ prometheus.Collector = (*Exporter)(nil)
 // NewExporter is called every time we receive a scrape request and knows how
 // to collect metrics using each of the scrapers. It will live only for the
 // duration of the scrape request.
-func NewExporter(ctx context.Context, logger *slog.Logger, connConfig *pgx.ConnConfig) *Exporter {
+func NewExporter(ctx context.Context, logger *slog.Logger, connConfig *pgx.ConnConfig, excludedDatabases []string) *Exporter {
 	return &Exporter{
 		ctx:        ctx,
 		logger:     logger,
@@ -114,6 +115,7 @@ func NewExporter(ctx context.Context, logger *slog.Logger, connConfig *pgx.ConnC
 			NewStatUserIndexesScraper(),
 			NewDiskUsageScraper(),
 		},
+		excludedDatabases: excludedDatabases,
 	}
 }
 
@@ -147,24 +149,21 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(infoDesc, prometheus.GaugeValue, infoMetricValue, v.String())
 
 	// discovery databases
-	var dbnames []string
+	e.logger.Debug(fmt.Sprintf("excludedDatabases: %s", strings.Join(e.excludedDatabases, ",")))
 
-	rows, err := conn.Query(e.ctx, listDatnameQuery)
+	rows, err := conn.Query(e.ctx, listDatnameQuery, e.excludedDatabases)
+	if err != nil {
+		e.logger.Error("error query datnames", slog.Any(errorKey, err))
+	}
+
+	var dbnames []string
+	dbnames, err = pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
 		e.logger.Error("list datname query", slog.Any(errorKey, err))
 		return
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var dbname string
-		err := rows.Scan(&dbname)
-		if err != nil {
-			e.logger.Error("list datname query row scan", slog.Any(errorKey, err))
-			return
-		}
-		dbnames = append(dbnames, dbname)
-	}
+	e.logger.Debug(fmt.Sprintf("datnames found: %s", strings.Join(dbnames, ",")))
 
 	// run global scrapers
 	for _, scraper := range e.scrapers {
@@ -179,7 +178,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		// establish a new connection
 		conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 		if err != nil {
-			e.logger.Error("pgx new conn", slog.Any(errorKey, err))
+			e.logger.Error("error pgx connection", slog.Any(errorKey, err))
 			return // cannot continue without a valid connection
 		}
 

@@ -10,6 +10,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data_13:/var/lib/postgresql/data
+      - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -43,7 +45,13 @@ services:
   postgres-exporter:
     build:
       context: .
-    command: ["--log.level=debug"]
+    command:
+      [
+        "--log.level=debug",
+        "--log.format=logfmt",
+        "--db.excluded-databases=rdsadmin",
+        "--db.excluded-databases=cloudsqladmin",
+      ]
     entrypoint: ["/bin/postgres_exporter"]
     ports:
       - "9187:9187"
