@@ -1,7 +1,7 @@
 ---
 services:
-  postgres:
-    image: postgres:14.15
+  postgres-13:
+    image: postgres:13.18
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -9,12 +9,28 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_13:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # postgres-14:
+  #   image: postgres:14.15
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: postgres
+  #   ports:
+  #     - "5432"
+  #   volumes:
+  #     - postgres_data_14:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
 
   prometheus:
     image: quay.io/prometheus/prometheus:v3.1.0
@@ -22,23 +38,26 @@ services:
       - "9090:9090"
     volumes:
       - ./docker:/etc/prometheus
-      - prometheus_data:/prometheus
+      - prometheus_data:/docker/prometheus_data
 
   postgres-exporter:
     build:
       context: .
+    command: ["--log.level=debug"]
+    entrypoint: ["/bin/postgres_exporter"]
     ports:
       - "9187:9187"
     environment:
-      - PGHOST=postgres
+      - PGHOST=postgres-13
       - PGUSER=postgres
       - PGPASSWORD=postgres
       - PGPGDATABASE=postgres
       - PGSSLMODE=disable
     depends_on:
-      postgres:
+      postgres-13:
         condition: service_healthy
 
 volumes:
-  postgres_data:
+  postgres_data_13:
+  # postgres_data_14:
   prometheus_data:
