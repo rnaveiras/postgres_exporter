@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/prometheus/client_golang/prometheus"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
@@ -33,12 +33,13 @@ const (
 var handlerLock sync.Mutex
 
 type flagConfig struct {
-	ListenAddress string `json:"listen_address"`
-	MetricsPath   string `json:"metrics_path"`
-	DataSource    string `json:"data_source"`
-	LogLevel      string `json:"log_level"`
-	LogFormat     string `json:"log_format"`
-	Pprof         bool   `json:"pprof"`
+	ListenAddress     string   `json:"listen_address"`
+	MetricsPath       string   `json:"metrics_path"`
+	DataSource        string   `json:"data_source"`
+	LogLevel          string   `json:"log_level"`
+	LogFormat         string   `json:"log_format"`
+	Pprof             bool     `json:"pprof"`
+	ExcludedDatabases []string `json:"excluded_databases"`
 }
 
 // LogValue implemnts LogValuer interface
@@ -49,6 +50,7 @@ func (f flagConfig) LogValue() slog.Value {
 		slog.String("log_level", f.LogLevel),
 		slog.String("log_format", f.LogFormat),
 		slog.Bool("pprof", f.Pprof),
+		slog.Any("exclude_databases", f.ExcludedDatabases),
 	)
 }
 
@@ -67,6 +69,9 @@ func main() {
 
 	a.Flag("db.data-source", "libpq compatible connection string, e.g `user=postgres host=/var/run/postgresql`. Leave blank for libqp envs").
 		StringVar(&cfg.DataSource)
+
+	a.Flag("db.excluded-databases", "Repeat this flag for each database to exclude from monitoring").
+		Default("cloudsdqladmin", "rdsadmin").StringsVar(&cfg.ExcludedDatabases)
 
 	a.Flag("log.level", "Only log messages with the given severity or above. One of: [debug, info, warn, error]").
 		Default("info").EnumVar(&cfg.LogLevel, "debug", "info", "warn", "error")
@@ -135,7 +140,7 @@ func main() {
 	}
 
 	// Register HTTP endpoints
-	http.Handle(cfg.MetricsPath, metricsHandler(logger, connConfig))
+	http.Handle(cfg.MetricsPath, metricsHandler(logger, connConfig, cfg))
 	http.Handle("/admin/loglevel", logLevelHandler(logger, logLevel))
 	http.Handle("/", catchHandler(logger, cfg.MetricsPath))
 
@@ -187,14 +192,14 @@ func catchHandler(logger *slog.Logger, metricsPath string) http.Handler {
 }
 
 // metricsHandler creates an HTTP handler that serves Prometheus metrics for PostgreSQL.
-func metricsHandler(logger *slog.Logger, connConfig *pgx.ConnConfig) http.Handler {
+func metricsHandler(logger *slog.Logger, connConfig *pgx.ConnConfig, cfg flagConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerLock.Lock()
 		defer handlerLock.Unlock()
 
 		registry := prometheus.NewRegistry()
 		registry.MustRegister(versioncollector.NewCollector("postgres_exporter"))
-		registry.MustRegister(collector.NewExporter(r.Context(), logger, connConfig))
+		registry.MustRegister(collector.NewExporter(r.Context(), logger, connConfig, cfg.ExcludedDatabases))
 
 		gatherers := prometheus.Gatherers{
 			prometheus.DefaultGatherer,
