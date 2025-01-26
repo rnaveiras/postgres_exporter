@@ -22,7 +22,7 @@ AND datname != 'cloudsqladmin' /*postgres_exporter*/`
 	successValue    = 1.0
 	failureValue    = 0.0
 	infoMetricValue = 1.0
-	levelError      = "error" // Used for error logging
+	errorKey        = "error"
 )
 
 var (
@@ -124,11 +124,11 @@ func (Exporter) Describe(ch chan<- *prometheus.Desc) {
 }
 
 // Collect implements the prometheus.Collector interface.
-func (e Exporter) Collect(ch chan<- prometheus.Metric) {
+func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, failureValue)
-		e.logger.Error("exporter collect", slog.Any("error", err))
+		e.logger.Error("exporter collect", slog.Any(errorKey, err))
 		return // cannot continue without a valid connection
 	}
 
@@ -138,7 +138,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	var version string
 	if err := conn.QueryRow(e.ctx, infoQuery).Scan(&version); err != nil {
-		e.logger.Error("info query", slog.Any("error", err))
+		e.logger.Error("info query", slog.Any(errorKey, err))
 		return // cannot continue without a version
 	}
 
@@ -151,7 +151,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	rows, err := conn.Query(e.ctx, listDatnameQuery)
 	if err != nil {
-		e.logger.Error("list datname query", slog.Any("error", err))
+		e.logger.Error("list datname query", slog.Any(errorKey, err))
 		return
 	}
 	defer rows.Close()
@@ -160,7 +160,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 		var dbname string
 		err := rows.Scan(&dbname)
 		if err != nil {
-			e.logger.Error("list datname query row scan", slog.Any("error", err))
+			e.logger.Error("list datname query row scan", slog.Any(errorKey, err))
 			return
 		}
 		dbnames = append(dbnames, dbname)
@@ -179,7 +179,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 		// establish a new connection
 		conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 		if err != nil {
-			e.logger.Error("pgx new conn", slog.Any("error", err))
+			e.logger.Error("pgx new conn", slog.Any(errorKey, err))
 			return // cannot continue without a valid connection
 		}
 
@@ -192,7 +192,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (e Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) {
+func (e *Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) {
 	start := time.Now()
 	err := scraper.Scrape(e.ctx, conn, version, ch)
 	duration := time.Since(start)
@@ -201,7 +201,7 @@ func (e Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch ch
 
 	e.logger = e.logger.With("scraper", scraper.Name(), "duration", duration.Seconds())
 	if err != nil {
-		e.logger.Error("failed scrape", slog.Any("error", err))
+		e.logger.Error("failed scrape", slog.Any(errorKey, err))
 	} else {
 		e.logger.Debug("", "event", "scraper.success")
 	}

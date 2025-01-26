@@ -20,6 +20,7 @@ linters:
     - promlinter
     - prealloc
     - sqlclosecheck
+    - sloglint
 
 linters-settings:
   revive:
