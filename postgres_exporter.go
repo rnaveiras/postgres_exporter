@@ -2,106 +2,174 @@ package main
 
 import (
 	"context"
-	stdlog "log"
+	"encoding/json"
+	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
-	// _ "net/http/pprof"
-
-	kitlog "github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	pgx "github.com/jackc/pgx/v4"
-	"github.com/pkg/errors"
+	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/prometheus/client_golang/prometheus"
+	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"github.com/rnaveiras/postgres_exporter/collector"
-	"github.com/rnaveiras/postgres_exporter/gokitadapter"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
 	readHeaderTimeout = 3 * time.Second
-	levelError        = "error" // Used for error logging
+	errorKey          = "error"
 	exitCodeError     = 1
 )
 
 var handlerLock sync.Mutex
 
-var (
-	listenAddress = kingpin.Flag("web.listen-address",
-		"Address on which to expose metrics and web interface.").Default("0.0.0.0:9187").String()
-	metricsPath = kingpin.Flag("web.telemetry-path",
-		"Path under which to expose metrics.").Default("/metrics").String()
-	dataSource = kingpin.Flag("db.data-source",
-		"libpq compatible data source, e.g `user=postgres host=/var/run/postgresql`. Leave blank for libpq envs").String()
-	logLevel = kingpin.Flag("log.level",
-		"Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
-)
+type flagConfig struct {
+	ListenAddress string `json:"listen_address"`
+	MetricsPath   string `json:"metrics_path"`
+	DataSource    string `json:"data_source"`
+	LogLevel      string `json:"log_level"`
+	LogFormat     string `json:"log_format"`
+	Pprof         bool   `json:"pprof"`
+}
+
+// LogValue implemnts LogValuer interface
+func (f flagConfig) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("listen_address", f.ListenAddress),
+		slog.String("metrics_path", f.MetricsPath),
+		slog.String("log_level", f.LogLevel),
+		slog.String("log_format", f.LogFormat),
+		slog.Bool("pprof", f.Pprof),
+	)
+}
 
 func main() {
-	kingpin.Version(version.Print("postgres_exporter"))
-	kingpin.HelpFlag.Short('h')
-	kingpin.Parse()
+	cfg := flagConfig{}
 
-	logger := kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
-	l, err := setlogLevel(*logLevel)
+	a := kingpin.New(filepath.Base(os.Args[0]), "The Postgres Exporter").UsageWriter(os.Stdout)
+	a.Version(version.Print("postgres_exporter"))
+	a.HelpFlag.Short('h')
+
+	a.Flag("web.listen-address", "Address on which to expose metrics and web interface.").
+		Default("0.0.0.0:9187").StringVar(&cfg.ListenAddress)
+
+	a.Flag("web.telemetry-path", "Path under which to expose metrics").
+		Default("/metrics").StringVar(&cfg.MetricsPath)
+
+	a.Flag("db.data-source", "libpq compatible connection string, e.g `user=postgres host=/var/run/postgresql`. Leave blank for libqp envs").
+		StringVar(&cfg.DataSource)
+
+	a.Flag("log.level", "Only log messages with the given severity or above. One of: [debug, info, warn, error]").
+		Default("info").EnumVar(&cfg.LogLevel, "debug", "info", "warn", "error")
+
+	a.Flag("log.format", "Output format of log messages. One of: [logfmt, json]").
+		Default("logfmt").EnumVar(&cfg.LogFormat, "logfmt", "json")
+
+	a.Flag("web.enabled-pprof", "").
+		Default("false").BoolVar(&cfg.Pprof)
+
+	_, err := a.Parse(os.Args[1:])
 	if err != nil {
-		level.Error(logger).Log(levelError, err)
+		//nolint:revive // Exiting anyway, so we can ignore
+		fmt.Fprintln(os.Stderr, fmt.Errorf("error parsing command line arguments: %w", err))
+		a.Usage(os.Args[1:])
 		os.Exit(exitCodeError)
 	}
 
-	logger = level.NewFilter(logger, l)
-	logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC, "caller", kitlog.DefaultCaller)
-	stdlog.SetOutput(kitlog.NewStdlibAdapter(logger))
-
-	level.Info(logger).Log("msg", "Starting Postgres exporter", "version", version.Info())
-	level.Info(logger).Log("build_context", version.BuildContext())
-
-	connConfig, err := pgx.ParseConfig(*dataSource)
+	// Setup log level
+	logLevel := new(slog.LevelVar)
+	logger, err := setupLogger(logLevel, cfg.LogFormat, cfg.LogLevel)
 	if err != nil {
-		level.Error(logger).Log(levelError, err)
+		//nolint:revive // Exiting anyway, so we can ignore
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(exitCodeError)
 	}
 
-	level.Info(logger).Log("user", connConfig.User, "host", connConfig.Host, "dbname", connConfig.Database)
+	// Booting
+	logger.Info("Starting Postgres exporter", "version", version.Info())
+	logger.Info("", "build_context", version.BuildContext())
 
+	// Log cfg configuration
+	logger.Debug("cfg", "cfg", cfg)
+
+	// ParseConfig creates a ConnConfig from a connection string.
+	connConfig, err := pgx.ParseConfig(cfg.DataSource)
+	if err != nil {
+		logger.Error("error parse config", slog.Any(errorKey, err))
+		os.Exit(exitCodeError)
+	}
+
+	logger.Info("connection string",
+		"user", connConfig.User,
+		"host", connConfig.Host,
+		"dbname", connConfig.Database,
+		"port", connConfig.Port,
+	)
+
+	// Configure the connection tracer for PostgreSQL query logging
+	// - Uses a custom SlogAdapter to integrate with our structured logging
+	// - LogLevel is set to None by default to avoid excessive logging
+	// This tracer can be used to debug database operations if needed
+	// by changing the LogLevel to tracelog.LogLevelDebug
+	connConfig.Tracer = &tracelog.TraceLog{
+		Logger:   &SlogAdapter{logger: logger},
+		LogLevel: tracelog.LogLevelNone,
+	}
+
+	// Set PostgreSQL session parameters for this connection:
+	// - client_encoding: ensures proper character encoding (UTF8)
+	// - application_name: identifies this connection in pg_stat_activity
+	//   making it easier to track exporter connections in the database
 	connConfig.RuntimeParams = map[string]string{
 		"client_encoding":  "UTF8",
 		"application_name": "postgres_exporter",
 	}
 
-	connConfig.Logger = gokitadapter.NewLogger(logger)
-	connConfig.LogLevel = pgx.LogLevelNone
+	// Register HTTP endpoints
+	http.Handle(cfg.MetricsPath, metricsHandler(logger, connConfig))
+	http.Handle("/admin/loglevel", logLevelHandler(logger, logLevel))
+	http.Handle("/", catchHandler(logger, cfg.MetricsPath))
 
-	if *logLevel != "info" {
-		connConfig.LogLevel, err = pgx.LogLevelFromString(*logLevel)
-		if err != nil {
-			level.Error(logger).Log(levelError, err)
-			os.Exit(exitCodeError)
-		}
+	// Enable runtime profiling endpoints when pprof flag is set
+	if cfg.Pprof {
+		mux := http.NewServeMux()
+
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+		http.Handle("/debug/pprof", mux)
 	}
 
-	http.Handle(*metricsPath, metricsHandler(logger, connConfig))
-	http.Handle("/", catchHandler(logger, metricsPath))
-
-	level.Info(logger).Log("component", "web", "msg", "Start listening for connections", "address", *listenAddress)
+	logger.Info("Start listening for connections",
+		"component", "web",
+		"address", cfg.ListenAddress,
+	)
 
 	server := &http.Server{
-		Addr:              *listenAddress,
+		Addr:              cfg.ListenAddress,
 		ReadHeaderTimeout: readHeaderTimeout,
 		BaseContext:       func(_ net.Listener) context.Context { return context.Background() },
 	}
 	err = server.ListenAndServe()
 	if err != nil {
-		level.Error(logger).Log("error", err)
+		logger.Error("failed listen and server", slog.Any(errorKey, err))
 	}
 }
 
-func catchHandler(logger kitlog.Logger, metricsPath *string) http.Handler {
+// catchHandler creates an HTTP handler that serves the index page of the exporter.
+func catchHandler(logger *slog.Logger, metricsPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
@@ -109,20 +177,23 @@ func catchHandler(logger kitlog.Logger, metricsPath *string) http.Handler {
                <head><title>postgres Exporter</title></head>
                <body>
                <h1>Postgres Exporter</h1>
-               <p><a href="` + *metricsPath + `">Metrics</a></p>
+               <p><a href="` + metricsPath + `">Metrics</a></p>
                </body>
                </html>`))
-		level.Error(logger).Log("error", err)
+		if err != nil {
+			logger.Error("catch all handler", slog.Any(errorKey, err))
+		}
 	})
 }
 
-func metricsHandler(logger kitlog.Logger, connConfig *pgx.ConnConfig) http.Handler {
+// metricsHandler creates an HTTP handler that serves Prometheus metrics for PostgreSQL.
+func metricsHandler(logger *slog.Logger, connConfig *pgx.ConnConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlerLock.Lock()
 		defer handlerLock.Unlock()
 
 		registry := prometheus.NewRegistry()
-		registry.MustRegister(version.NewCollector("postgres_exporter"))
+		registry.MustRegister(versioncollector.NewCollector("postgres_exporter"))
 		registry.MustRegister(collector.NewExporter(r.Context(), logger, connConfig))
 
 		gatherers := prometheus.Gatherers{
@@ -142,20 +213,92 @@ func metricsHandler(logger kitlog.Logger, connConfig *pgx.ConnConfig) http.Handl
 	})
 }
 
-func setlogLevel(s string) (level.Option, error) {
-	var o level.Option
-	switch s {
-	case "debug":
-		o = level.AllowDebug()
-	case "info":
-		o = level.AllowInfo()
-	case "warn":
-		o = level.AllowWarn()
-	case "error":
-		o = level.AllowError()
-	default:
-		return level.AllowAll(), errors.Errorf("unrecognized log level %q", s)
+// logLevelHandler creates an HTTP handler that enables dynamic log level
+// adjustment
+func logLevelHandler(logger *slog.Logger, logLevel *slog.LevelVar) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		type logLevelJSON struct {
+			Level string `json:"level"`
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.Method {
+		case http.MethodGet:
+			// Return current logLevel
+			currentLevel := logLevel.Level().String()
+			if err := json.NewEncoder(w).Encode(logLevelJSON{Level: currentLevel}); err != nil {
+				http.Error(w, "error failed to encode JSON respose", http.StatusInternalServerError)
+				return
+			}
+
+		case http.MethodPatch:
+			var req logLevelJSON
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "error invalid request body", http.StatusBadRequest)
+				return
+			}
+
+			// Validate user input
+			validLevels := map[string]slog.Level{
+				"debug": slog.LevelDebug,
+				"info":  slog.LevelInfo,
+				"warn":  slog.LevelWarn,
+				"error": slog.LevelError,
+			}
+			level, ok := validLevels[strings.ToLower(req.Level)]
+			if !ok {
+				http.Error(w, "error invalid log level", http.StatusBadRequest)
+				return
+			}
+
+			logLevel.Set(level)
+			logger.Info("log level changed", "level", level)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+}
+
+// setupLogger configures the logger,
+func setupLogger(logLevelVar *slog.LevelVar, logFormat string, logLevel string) (*slog.Logger, error) {
+	// setup LogLevel
+	if err := setLogLevel(logLevelVar, logLevel); err != nil {
+		return nil, fmt.Errorf("error setting log level %w", err)
 	}
 
-	return o, nil
+	handlerOpts := slog.HandlerOptions{
+		Level:     logLevelVar,
+		AddSource: false,
+	}
+
+	var handler slog.Handler
+	if logFormat == "logfmt" {
+		handler = slog.NewTextHandler(os.Stderr, &handlerOpts)
+	} else {
+		handler = slog.NewJSONHandler(os.Stderr, &handlerOpts)
+	}
+
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
+	return logger, nil
+}
+
+// setLogLevel configures the log level from a string value.
+// Valid levels are: debug, info, warn, error
+func setLogLevel(logLevel *slog.LevelVar, level string) error {
+	switch strings.ToLower(level) {
+	case "debug":
+		logLevel.Set(slog.LevelDebug)
+	case "info":
+		logLevel.Set(slog.LevelInfo)
+	case "warn":
+		logLevel.Set(slog.LevelWarn)
+	case "error":
+		logLevel.Set(slog.LevelError)
+	default:
+		return fmt.Errorf("invalid log level %q, valid levels are: debug, info, warn, error", level)
+	}
+	return nil
 }

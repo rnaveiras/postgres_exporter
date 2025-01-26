@@ -3,13 +3,12 @@ package collector
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
-	kitlog "github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	pgx "github.com/jackc/pgx/v4"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -23,7 +22,7 @@ AND datname != 'cloudsqladmin' /*postgres_exporter*/`
 	successValue    = 1.0
 	failureValue    = 0.0
 	infoMetricValue = 1.0
-	levelError      = "error" // Used for error logging
+	errorKey        = "error"
 )
 
 var (
@@ -62,7 +61,7 @@ type Scraper interface {
 
 type Exporter struct {
 	ctx             context.Context
-	logger          kitlog.Logger
+	logger          *slog.Logger
 	connConfig      *pgx.ConnConfig
 	scrapers        []Scraper
 	datnameScrapers []Scraper
@@ -95,7 +94,7 @@ var _ prometheus.Collector = (*Exporter)(nil)
 // NewExporter is called every time we receive a scrape request and knows how
 // to collect metrics using each of the scrapers. It will live only for the
 // duration of the scrape request.
-func NewExporter(ctx context.Context, logger kitlog.Logger, connConfig *pgx.ConnConfig) *Exporter {
+func NewExporter(ctx context.Context, logger *slog.Logger, connConfig *pgx.ConnConfig) *Exporter {
 	return &Exporter{
 		ctx:        ctx,
 		logger:     logger,
@@ -125,11 +124,11 @@ func (Exporter) Describe(ch chan<- *prometheus.Desc) {
 }
 
 // Collect implements the prometheus.Collector interface.
-func (e Exporter) Collect(ch chan<- prometheus.Metric) {
+func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, failureValue)
-		level.Error(e.logger).Log(levelError, err)
+		e.logger.Error("exporter collect", slog.Any(errorKey, err))
 		return // cannot continue without a valid connection
 	}
 
@@ -139,7 +138,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	var version string
 	if err := conn.QueryRow(e.ctx, infoQuery).Scan(&version); err != nil {
-		level.Error(e.logger).Log(levelError, err)
+		e.logger.Error("info query", slog.Any(errorKey, err))
 		return // cannot continue without a version
 	}
 
@@ -152,7 +151,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	rows, err := conn.Query(e.ctx, listDatnameQuery)
 	if err != nil {
-		level.Error(e.logger).Log(levelError, err)
+		e.logger.Error("list datname query", slog.Any(errorKey, err))
 		return
 	}
 	defer rows.Close()
@@ -161,7 +160,7 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 		var dbname string
 		err := rows.Scan(&dbname)
 		if err != nil {
-			level.Error(e.logger).Log(levelError, err)
+			e.logger.Error("list datname query row scan", slog.Any(errorKey, err))
 			return
 		}
 		dbnames = append(dbnames, dbname)
@@ -175,12 +174,12 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 	// run datname scrapers
 	for _, dbname := range dbnames {
 		// update connection dbname
-		e.connConfig.Config.Database = dbname
+		e.connConfig.Database = dbname
 
 		// establish a new connection
 		conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 		if err != nil {
-			level.Error(e.logger).Log(levelError, err)
+			e.logger.Error("pgx new conn", slog.Any(errorKey, err))
 			return // cannot continue without a valid connection
 		}
 
@@ -193,23 +192,21 @@ func (e Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (e Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) {
+func (e *Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) {
 	start := time.Now()
 	err := scraper.Scrape(e.ctx, conn, version, ch)
 	duration := time.Since(start)
 
 	var success float64
 
-	logger := kitlog.With(e.logger, "scraper", scraper.Name(), "duration", duration.Seconds())
+	e.logger = e.logger.With("scraper", scraper.Name(), "duration", duration.Seconds())
 	if err != nil {
-		logger.Log(levelError, err)
-		success = successValue
+		e.logger.Error("failed scrape", slog.Any(errorKey, err))
 	} else {
-		level.Debug(logger).Log("event", "scraper.success")
-		success = failureValue
+		e.logger.Debug("", "event", "scraper.success")
 	}
 
-	datname := e.connConfig.Config.Database
+	datname := e.connConfig.Database
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), scraper.Name(), datname)
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, scraper.Name(), datname)
 }

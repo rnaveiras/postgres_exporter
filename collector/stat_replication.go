@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	pgx "github.com/jackc/pgx/v4"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
