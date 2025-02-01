@@ -21,7 +21,7 @@ RUN set -x \
   && promu build --verbose --prefix=./output \
   && find ./output
 
-FROM alpine:3.19
+FROM alpine:3.21
 LABEL org.opencontainers.image.authors="Raul Naveiras <rnaveiras@gmail.com>"
 
 COPY --from=builder /go/src/app/output/postgres_exporter /bin/postgres_exporter
