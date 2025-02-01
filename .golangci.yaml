@@ -4,6 +4,12 @@ output:
 
 linters:
   enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
     # - depguard
     - gofumpt
     - goimports
@@ -12,7 +18,7 @@ linters:
     # - gochecknoglobals
     - errname
     - errorlint
-    # - forcetypeassert
+    - forcetypeassert
     - gochecknoinits
     - gocyclo
     - gosec
@@ -21,6 +27,11 @@ linters:
     - prealloc
     - sqlclosecheck
     - sloglint
+    - bodyclose
+    - importas
+    - spancheck
+    - usestdlibvars
+    # - wrapcheck
 
 linters-settings:
   revive:
@@ -35,6 +46,6 @@ linters-settings:
         arguments: [12]
       - name: cyclomatic
         arguments: [12]
-  errcheck:
-    exclude-functions:
-      - (github.com/go-kit/log.Logger).Log
+  sloglint:
+    no-global: "all"
+    key-naming-case: snake
