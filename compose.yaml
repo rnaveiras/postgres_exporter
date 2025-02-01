@@ -1,48 +1,86 @@
 ---
+name: postgres_exporter
+x-postgres: &postgres
+  environment:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_DB: postgres
+  ports:
+    - "5432:5432"
+  command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U postgres"]
+    interval: 5s
+    timeout: 5s
+    retries: 5
+  networks:
+    postgres_exporter:
+      aliases:
+        - postgres
+
+x-network: &network
+  networks:
+    - postgres_exporter
+
 services:
-  postgres-13:
+  postgres13:
+    <<: *postgres
     image: postgres:13.18
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data_13:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
-    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    profiles:
+      - postgres13
 
-  # postgres-14:
-  #   image: postgres:14.15
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: postgres
-  #   ports:
-  #     - "5432"
-  #   volumes:
-  #     - postgres_data_14:/var/lib/postgresql/data
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 5
+  postgres14:
+    <<: *postgres
+    image: postgres:14.15
+    volumes:
+      - postgres_data_14:/var/lib/postgresql/data
+      - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
+    profiles:
+      - postgres14
+
+  postgres15:
+    <<: *postgres
+    image: postgres:15.10
+    volumes:
+      - postgres_data_15:/var/lib/postgresql/data
+      - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
+    profiles:
+      - postgres15
+
+  postgres16:
+    <<: *postgres
+    image: postgres:16.6
+    volumes:
+      - postgres_data_16:/var/lib/postgresql/data
+      - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
+    profiles:
+      - postgres16
+
+  postgres17:
+    <<: *postgres
+    image: postgres:17.2
+    volumes:
+      - postgres_data_17:/var/lib/postgresql/data
+      - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
+    profiles:
+      - postgres17
 
   prometheus:
+    <<: *network
     image: quay.io/prometheus/prometheus:v3.1.0
     ports:
       - "9090:9090"
     volumes:
-      - ./docker:/etc/prometheus
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/docker/prometheus_data
+    profiles:
+      - default
 
   postgres-exporter:
+    <<: *network
     build:
       context: .
     command:
@@ -56,16 +94,21 @@ services:
     ports:
       - "9187:9187"
     environment:
-      - PGHOST=postgres-13
+      - PGHOST=postgres
       - PGUSER=postgres
       - PGPASSWORD=postgres
       - PGPGDATABASE=postgres
       - PGSSLMODE=disable
-    depends_on:
-      postgres-13:
-        condition: service_healthy
+    profiles:
+      - default
 
 volumes:
-  postgres_data_13:
-  # postgres_data_14:
   prometheus_data:
+  postgres_data_13:
+  postgres_data_14:
+  postgres_data_15:
+  postgres_data_16:
+  postgres_data_17:
+
+networks:
+  postgres_exporter:
