@@ -25,6 +25,8 @@ x-network: &network
 services:
   postgres13:
     <<: *postgres
+    # renovate: datasource=docker depName=postgres versioning=docker
+    # renovate: allowedVersions=13.x
     image: postgres:13.18
     volumes:
       - postgres_data_13:/var/lib/postgresql/data
@@ -34,6 +36,8 @@ services:
 
   postgres14:
     <<: *postgres
+    # renovate: datasource=docker depName=postgres versioning=docker
+    # renovate: allowedVersions=14.x
     image: postgres:14.15
     volumes:
       - postgres_data_14:/var/lib/postgresql/data
@@ -42,6 +46,8 @@ services:
       - postgres14
 
   postgres15:
+    # renovate: datasource=docker depName=postgres versioning=docker
+    # renovate: allowedVersions=15.x
     <<: *postgres
     image: postgres:15.10
     volumes:
@@ -52,6 +58,8 @@ services:
 
   postgres16:
     <<: *postgres
+    # renovate: datasource=docker depName=postgres versioning=docker
+    # renovate: allowedVersions=16.x
     image: postgres:16.6
     volumes:
       - postgres_data_16:/var/lib/postgresql/data
@@ -60,6 +68,8 @@ services:
       - postgres16
 
   postgres17:
+    # renovate: datasource=docker depName=postgres versioning=docker
+    # renovate: allowedVersions=17.x
     <<: *postgres
     image: postgres:17.2
     volumes:
