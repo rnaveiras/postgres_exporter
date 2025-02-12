@@ -4,3 +4,4 @@ golangci-lint = "1.64.3"
 pre-commit = "4.1.0"
 
 [env]
+COMPOSE_PROFILES = 'default,postgres13'
