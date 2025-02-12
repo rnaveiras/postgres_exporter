@@ -20,7 +20,7 @@ jobs:
   linter:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@master
         with:
@@ -31,9 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - name: set up go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
         with:
           go-version: 1.23.5
         id: go
@@ -51,9 +51,9 @@ jobs:
     needs: [mod-tidy]
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - name: set up go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
         with:
           go-version: 1.23.5
         id: go
@@ -70,17 +70,17 @@ jobs:
       packages: write
       contents: read
     steps:
-      - uses: docker/setup-buildx-action@v3.9.0
+      - uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
         with:
           install: true
 
-      - uses: docker/login-action@v3.3.0
+      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/metadata-action@v5.6.1
+      - uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
         id: metadata
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -90,7 +90,7 @@ jobs:
             type=ref,event=tag
             type=semver,pattern={{version}}
 
-      - uses: docker/build-push-action@v6.13.0
+      - uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991 # v6.13.0
         with:
           cache-from: type=gha
           cache-to: type=gha,mode=max
