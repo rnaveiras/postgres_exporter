@@ -80,7 +80,7 @@ services:
 
   prometheus:
     <<: *network
-    image: quay.io/prometheus/prometheus:v3.1.0
+    image: quay.io/prometheus/prometheus:v3.2.0
     ports:
       - "9090:9090"
     volumes:
