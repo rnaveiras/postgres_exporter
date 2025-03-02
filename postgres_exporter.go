@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -25,9 +27,20 @@ import (
 )
 
 const (
-	readHeaderTimeout = 3 * time.Second
-	errorKey          = "error"
-	exitCodeError     = 1
+	errorKey      = "error"
+	exitCodeError = 1
+
+	// Server timeouts
+	readTimeout       = 5 * time.Second
+	writeTimeout      = 10 * time.Second
+	idleTimeout       = 120 * time.Second
+	readHeaderTimeout = 5 * time.Second
+
+	// Global request timeout
+	globalRequestTimeout = 30 * time.Second
+
+	// Graceful shutdown timeout
+	shutdownTimeout = 30 * time.Second
 )
 
 var handlerLock sync.Mutex
@@ -100,7 +113,7 @@ func main() {
 	}
 
 	// Booting
-	logger.Info("Starting Postgres exporter", "version", version.Info())
+	logger.Info("starting postgres exporter", "version", version.Info())
 	logger.Info("", "build_context", version.BuildContext())
 
 	// Log cfg configuration
@@ -139,38 +152,78 @@ func main() {
 		"application_name": "postgres_exporter",
 	}
 
-	// Register HTTP endpoints
-	http.Handle(cfg.MetricsPath, metricsHandler(logger, connConfig, cfg))
-	http.Handle("/admin/loglevel", logLevelHandler(logger, logLevel))
-	http.Handle("/", catchHandler(logger, cfg.MetricsPath))
+	// create a new servemux
+	mux := http.NewServeMux()
+	// register http endpoints
+	mux.Handle(cfg.MetricsPath, metricsHandler(logger, connConfig, cfg))
+	mux.Handle("/admin/loglevel", logLevelHandler(logger, logLevel))
+	mux.Handle("/", catchHandler(logger, cfg.MetricsPath))
 
-	// Enable runtime profiling endpoints when pprof flag is set
+	// enable runtime profiling endpoints when pprof flag is set
 	if cfg.Pprof {
-		mux := http.NewServeMux()
+		// Create a dedicated mux for pprof endpoints
+		debugMux := http.NewServeMux()
+		debugMux.HandleFunc("/debug/pprof/", pprof.Index)
+		debugMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		debugMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		debugMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		debugMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
-		mux.HandleFunc("/debug/pprof/", pprof.Index)
-		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-
-		http.Handle("/debug/pprof", mux)
+		mux.Handle("/debug/pprof", debugMux)
 	}
 
-	logger.Info("Start listening for connections",
+	logger.Info("start listening for connections",
 		"component", "web",
 		"address", cfg.ListenAddress,
 	)
 
 	server := &http.Server{
 		Addr:              cfg.ListenAddress,
+		Handler:           mux,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
 		ReadHeaderTimeout: readHeaderTimeout,
-		BaseContext:       func(_ net.Listener) context.Context { return context.Background() },
+
+		BaseContext: func(_ net.Listener) context.Context { return context.Background() },
 	}
-	err = server.ListenAndServe()
-	if err != nil {
-		logger.Error("failed listen and server", slog.Any(errorKey, err))
+
+	go func() {
+		err = server.ListenAndServe()
+		if err != nil {
+			logger.Error("failed listen and server", slog.Any(errorKey, err))
+		}
+	}()
+
+	logger.Info("ready",
+		"component", "web",
+	)
+
+	// Create a context that will be canceled on receiving a shutdown signal
+	// signal.NotifyContext handles signal setup and cleanup automatically
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// Wait for interrupt signal
+	<-ctx.Done()
+
+	logger.Info("shutting down server - received signal",
+		"component", "web",
+		"error", ctx.Err())
+
+	// Create a deadline to wait for current operations to complete
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error("server forced to shutdown",
+			"component", "web",
+			"error", err)
 	}
+
+	logger.Info("server gracefully stopped",
+		"component", "web",
+	)
 }
 
 // catchHandler creates an HTTP handler that serves the index page of the exporter.
