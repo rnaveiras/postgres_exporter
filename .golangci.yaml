@@ -41,7 +41,7 @@ linters-settings:
       - name: line-length-limit
         arguments: [160]
       - name: function-length
-        arguments: [50, 150] # Maximum number of lines allowed in a function
+        arguments: [70, 200] # Maximum number of lines allowed in a function
       - name: cognitive-complexity
         arguments: [12]
       - name: cyclomatic

@@ -37,7 +37,7 @@ const (
 	readHeaderTimeout = 5 * time.Second
 
 	// Global request timeout
-	globalRequestTimeout = 30 * time.Second
+	// globalRequestTimeout = 30 * time.Second
 
 	// Graceful shutdown timeout
 	shutdownTimeout = 30 * time.Second
@@ -172,8 +172,8 @@ func main() {
 		mux.Handle("/debug/pprof", debugMux)
 	}
 
+	logger = logger.With("component", "web")
 	logger.Info("start listening for connections",
-		"component", "web",
 		"address", cfg.ListenAddress,
 	)
 
@@ -195,9 +195,7 @@ func main() {
 		}
 	}()
 
-	logger.Info("ready",
-		"component", "web",
-	)
+	logger.Info("ready")
 
 	// Create a context that will be canceled on receiving a shutdown signal
 	// signal.NotifyContext handles signal setup and cleanup automatically
@@ -208,8 +206,7 @@ func main() {
 	<-ctx.Done()
 
 	logger.Info("shutting down server - received signal",
-		"component", "web",
-		"error", ctx.Err())
+		errorKey, ctx.Err())
 
 	// Create a deadline to wait for current operations to complete
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
@@ -217,13 +214,10 @@ func main() {
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error("server forced to shutdown",
-			"component", "web",
-			"error", err)
+			errorKey, err)
 	}
 
-	logger.Info("server gracefully stopped",
-		"component", "web",
-	)
+	logger.Info("server gracefully stopped")
 }
 
 // catchHandler creates an HTTP handler that serves the index page of the exporter.
