@@ -56,7 +56,7 @@ func (*infoScraper) Name() string {
 	return "InfoScraper"
 }
 
-func (c *infoScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
+func (c *infoScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
 	var recovery, backup int64
 	var startTime, configLoadTime time.Time
 
@@ -69,8 +69,16 @@ func (c *infoScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch 
 	if err := conn.QueryRow(ctx, isInBackupQuery).Scan(&backup); err != nil {
 		return err
 	}
-	// postgres_is_in_backup
-	ch <- prometheus.MustNewConstMetric(c.isInBackup, prometheus.GaugeValue, float64(backup))
+
+	// postgres_is_in_backup was removed in PostgreSQL 15
+	if !version.Gte(15.0) {
+		var backup int64
+		if err := conn.QueryRow(ctx, isInBackupQuery).Scan(&backup); err != nil {
+			return err
+		}
+		// postgres_is_in_backup
+		ch <- prometheus.MustNewConstMetric(c.isInBackup, prometheus.GaugeValue, float64(backup))
+	}
 
 	if err := conn.QueryRow(ctx, startTimeQuery).Scan(&startTime); err != nil {
 		return err
