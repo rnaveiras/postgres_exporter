@@ -9,10 +9,11 @@ import (
 )
 
 const (
-	isInRecoveryQuery   = `SELECT pg_is_in_recovery()::int /*postgres_exporter*/`
-	isInBackupQuery     = `SELECT pg_is_in_backup()::int /*postgres_exporter*/`
-	startTimeQuery      = `SELECT pg_postmaster_start_time() /*postgres_exporter*/`
-	configLoadTimeQuery = `SELECT pg_conf_load_time() /*postgres_exporter*/`
+	isInRecoveryQuery           = `SELECT pg_is_in_recovery()::int /*postgres_exporter*/`
+	isInBackupQuery             = `SELECT pg_is_in_backup()::int /*postgres_exporter*/`
+	startTimeQuery              = `SELECT pg_postmaster_start_time() /*postgres_exporter*/`
+	configLoadTimeQuery         = `SELECT pg_conf_load_time() /*postgres_exporter*/`
+	isInBackupDeprecatedVersion = 15.0
 )
 
 type infoScraper struct {
@@ -71,7 +72,7 @@ func (c *infoScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Versio
 	}
 
 	// postgres_is_in_backup was removed in PostgreSQL 15
-	if !version.Gte(15.0) {
+	if !version.Gte(isInBackupDeprecatedVersion) {
 		var backup int64
 		if err := conn.QueryRow(ctx, isInBackupQuery).Scan(&backup); err != nil {
 			return err
