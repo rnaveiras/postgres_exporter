@@ -49,29 +49,29 @@ func (c *locksScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch
 
 	defer rows.Close()
 
-	var datname, locktype, mode string
-	var granted bool
-	var count float64
+	type lockRow struct {
+		datname  string
+		locktype string
+		mode     string
+		granted  bool
+		count    float64
+	}
 
-	for rows.Next() {
-		if err := rows.Scan(&datname, &locktype, &mode, &granted, &count); err != nil {
-			return err
-		}
+	lockRows, err := pgx.CollectRows(rows, pgx.RowToStructByName[lockRow])
+	if err != nil {
+		return err
+	}
 
+	for _, row := range lockRows {
 		ch <- prometheus.MustNewConstMetric(
 			c.locks,
 			prometheus.GaugeValue,
-			count,
-			datname,
-			locktype,
-			mode,
-			strconv.FormatBool(granted),
+			row.count,
+			row.datname,
+			row.locktype,
+			row.mode,
+			strconv.FormatBool(row.granted),
 		)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return err
 	}
 
 	return nil

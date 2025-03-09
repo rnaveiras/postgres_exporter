@@ -202,84 +202,99 @@ func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Ve
 	}
 	defer rows.Close()
 
-	var schemaname, relname string
-	var seqScan, seqTupRead, idxScan, idxTupFetch, nTupIns, nTupUpd, nTupDel,
-		nTupHotUpd, nLiveTup, nDeadTup, nModSinceAnalyze, vacuumCount,
-		autovacuumCount, analyzeCount, autoanalyzeCount float64
-	var lastAnalyze, lastVacuum, lastAutoAnalyze, lastAutoVacuum time.Time
-	for rows.Next() {
-		if err := rows.Scan(&schemaname,
-			&relname,
-			&seqScan,
-			&seqTupRead,
-			&idxScan,
-			&idxTupFetch,
-			&nTupIns,
-			&nTupUpd,
-			&nTupDel,
-			&nTupHotUpd,
-			&nLiveTup,
-			&nDeadTup,
-			&nModSinceAnalyze,
-			&lastAnalyze,
-			&lastAutoAnalyze,
-			&lastVacuum,
-			&lastAutoVacuum,
-			&vacuumCount,
-			&autovacuumCount,
-			&analyzeCount,
-			&autoanalyzeCount); err != nil {
-			return err
-		}
-
-		// postgres_stat_user_tables_seq_scan
-		ch <- prometheus.MustNewConstMetric(c.seqScan, prometheus.CounterValue, seqScan, datname, schemaname, relname)
-		// postgres_stat_user_tables_seq_tup_read
-		ch <- prometheus.MustNewConstMetric(c.seqTupRead, prometheus.CounterValue, seqTupRead, datname, schemaname, relname)
-
-		// postgres_stat_user_tables_idx_scan_total
-		ch <- prometheus.MustNewConstMetric(c.idxScan, prometheus.CounterValue, idxScan, datname, schemaname, relname)
-		// postgres_stat_user_tables_idx_fetch_total
-		ch <- prometheus.MustNewConstMetric(c.idxTupFetch, prometheus.CounterValue, idxTupFetch, datname, schemaname, relname)
-
-		// postgres_stat_user_tables_n_tup_in_total
-		ch <- prometheus.MustNewConstMetric(c.nTupIns, prometheus.CounterValue, nTupIns, datname, schemaname, relname)
-		// postgres_stat_user_tables_n_tup_upd_total
-		ch <- prometheus.MustNewConstMetric(c.nTupUpd, prometheus.CounterValue, nTupUpd, datname, schemaname, relname)
-		// postgres_stat_user_tables_n_tup_del_total
-		ch <- prometheus.MustNewConstMetric(c.nTupDel, prometheus.CounterValue, nTupDel, datname, schemaname, relname)
-		// postgres_stat_user_tables_n_tup_hot_upd_total
-		ch <- prometheus.MustNewConstMetric(c.nTupHotUpd, prometheus.CounterValue, nTupHotUpd, datname, schemaname, relname)
-
-		// postgres_stat_user_tables_n_live_tup
-		ch <- prometheus.MustNewConstMetric(c.nLiveTup, prometheus.GaugeValue, nLiveTup, datname, schemaname, relname)
-		// postgres_stat_user_tables_n_dead_tup
-		ch <- prometheus.MustNewConstMetric(c.nDeadTup, prometheus.GaugeValue, nDeadTup, datname, schemaname, relname)
-		// postgres_stat_user_tables_n_mod_since_analyze
-		ch <- prometheus.MustNewConstMetric(c.nModSinceAnalyze, prometheus.GaugeValue, nModSinceAnalyze, datname, schemaname, relname)
-
-		// postgres_stat_user_tables_last_analyze_timestamp
-		ch <- prometheus.MustNewConstMetric(c.lastAnalyze, prometheus.GaugeValue, float64(lastAnalyze.UTC().Unix()), datname, schemaname, relname)
-		// postgres_stat_user_tables_last_autoanalyze_timestamp
-		ch <- prometheus.MustNewConstMetric(c.lastAutoAnalyze, prometheus.GaugeValue, float64(lastAutoAnalyze.UTC().Unix()), datname, schemaname, relname)
-		// postgres_stat_user_tables_last_vacuum_timestamp
-		ch <- prometheus.MustNewConstMetric(c.lastVacuum, prometheus.GaugeValue, float64(lastVacuum.UTC().Unix()), datname, schemaname, relname)
-		// postgres_stat_user_tables_last_autovacuum_timestamp
-		ch <- prometheus.MustNewConstMetric(c.lastAutoVacuum, prometheus.GaugeValue, float64(lastAutoVacuum.UTC().Unix()), datname, schemaname, relname)
-
-		// postgres_stat_user_tables_vacuum_total
-		ch <- prometheus.MustNewConstMetric(c.vacuumCount, prometheus.CounterValue, vacuumCount, datname, schemaname, relname)
-		// postgres_stat_user_tables_autovacuum_total
-		ch <- prometheus.MustNewConstMetric(c.autovacuumCount, prometheus.CounterValue, autovacuumCount, datname, schemaname, relname)
-		// postgres_stat_user_tables_analyze_total
-		ch <- prometheus.MustNewConstMetric(c.analyzeCount, prometheus.CounterValue, analyzeCount, datname, schemaname, relname)
-		// postgres_stat_user_tables_autovacuum_total
-		ch <- prometheus.MustNewConstMetric(c.autoanalyzeCount, prometheus.CounterValue, autoanalyzeCount, datname, schemaname, relname)
+	type tableRow struct {
+		schemaname       string
+		relname          string
+		seqScan          float64
+		seqTupRead       float64
+		idxScan          float64
+		idxTupFetch      float64
+		nTupIns          float64
+		nTupUpd          float64
+		nTupDel          float64
+		nTupHotUpd       float64
+		nLiveTup         float64
+		nDeadTup         float64
+		nModSinceAnalyze float64
+		lastAnalyze      time.Time
+		lastAutoAnalyze  time.Time
+		lastVacuum       time.Time
+		lastAutoVacuum   time.Time
+		vacuumCount      float64
+		autovacuumCount  float64
+		analyzeCount     float64
+		autoanalyzeCount float64
 	}
 
-	err = rows.Err()
+	tableRows, err := pgx.CollectRows(rows, pgx.RowToStructByName[tableRow])
 	if err != nil {
 		return err
+	}
+
+	for _, row := range tableRows {
+		// postgres_stat_user_tables_seq_scan
+		ch <- prometheus.MustNewConstMetric(c.seqScan, prometheus.CounterValue, row.seqScan, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_seq_tup_read
+		ch <- prometheus.MustNewConstMetric(c.seqTupRead, prometheus.CounterValue, row.seqTupRead, datname, row.schemaname, row.relname)
+
+		// postgres_stat_user_tables_idx_scan_total
+		ch <- prometheus.MustNewConstMetric(c.idxScan, prometheus.CounterValue, row.idxScan, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_idx_fetch_total
+		ch <- prometheus.MustNewConstMetric(c.idxTupFetch, prometheus.CounterValue, row.idxTupFetch, datname, row.schemaname, row.relname)
+
+		// postgres_stat_user_tables_n_tup_in_total
+		ch <- prometheus.MustNewConstMetric(c.nTupIns, prometheus.CounterValue, row.nTupIns, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_n_tup_upd_total
+		ch <- prometheus.MustNewConstMetric(c.nTupUpd, prometheus.CounterValue, row.nTupUpd, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_n_tup_del_total
+		ch <- prometheus.MustNewConstMetric(c.nTupDel, prometheus.CounterValue, row.nTupDel, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_n_tup_hot_upd_total
+		ch <- prometheus.MustNewConstMetric(c.nTupHotUpd, prometheus.CounterValue, row.nTupHotUpd, datname, row.schemaname, row.relname)
+
+		// postgres_stat_user_tables_n_live_tup
+		ch <- prometheus.MustNewConstMetric(c.nLiveTup, prometheus.GaugeValue, row.nLiveTup, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_n_dead_tup
+		ch <- prometheus.MustNewConstMetric(c.nDeadTup, prometheus.GaugeValue, row.nDeadTup, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_n_mod_since_analyze
+		ch <- prometheus.MustNewConstMetric(c.nModSinceAnalyze, prometheus.GaugeValue, row.nModSinceAnalyze, datname, row.schemaname, row.relname)
+
+		// postgres_stat_user_tables_last_analyze_timestamp
+		ch <- prometheus.MustNewConstMetric(
+			c.lastAnalyze,
+			prometheus.GaugeValue,
+			float64(row.lastAnalyze.UTC().Unix()),
+			datname, row.schemaname, row.relname,
+		)
+		// postgres_stat_user_tables_last_autoanalyze_timestamp
+		ch <- prometheus.MustNewConstMetric(
+			c.lastAutoAnalyze,
+			prometheus.GaugeValue,
+			float64(row.lastAutoAnalyze.UTC().Unix()),
+			datname, row.schemaname, row.relname,
+		)
+		// postgres_stat_user_tables_last_vacuum_timestamp
+		ch <- prometheus.MustNewConstMetric(
+			c.lastVacuum,
+			prometheus.GaugeValue,
+			float64(row.lastVacuum.UTC().Unix()),
+			datname, row.schemaname, row.relname,
+		)
+		// postgres_stat_user_tables_last_autovacuum_timestamp
+		ch <- prometheus.MustNewConstMetric(
+			c.lastAutoVacuum,
+			prometheus.GaugeValue,
+			float64(row.lastAutoVacuum.UTC().Unix()),
+			datname, row.schemaname, row.relname,
+		)
+
+		// postgres_stat_user_tables_vacuum_total
+		ch <- prometheus.MustNewConstMetric(c.vacuumCount, prometheus.CounterValue, row.vacuumCount, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_autovacuum_total
+		ch <- prometheus.MustNewConstMetric(c.autovacuumCount, prometheus.CounterValue, row.autovacuumCount, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_analyze_total
+		ch <- prometheus.MustNewConstMetric(c.analyzeCount, prometheus.CounterValue, row.analyzeCount, datname, row.schemaname, row.relname)
+		// postgres_stat_user_tables_autovacuum_total
+		ch <- prometheus.MustNewConstMetric(c.autoanalyzeCount, prometheus.CounterValue, row.autoanalyzeCount, datname, row.schemaname, row.relname)
 	}
 
 	return nil

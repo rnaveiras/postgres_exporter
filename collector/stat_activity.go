@@ -119,22 +119,23 @@ func (c *statActivityScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Vers
 	}
 	defer rows.Close()
 
-	var datname, state string
-	var count, oldestTx, oldestActive, oldestSnapshot, oldestXmin float64
-	var oldestBackend time.Time
-
-	for rows.Next() {
-		if err := rows.Scan(&datname, &state, &count); err != nil {
-			return err
-		}
-
-		// postgres_stat_activity_connections
-		ch <- prometheus.MustNewConstMetric(c.connections, prometheus.GaugeValue, count, datname, state)
+	type activityRow struct {
+		datname string
+		state   string
+		count   float64
 	}
 
-	err = rows.Err()
+	var oldestTx, oldestActive, oldestSnapshot, oldestXmin float64
+	var oldestBackend time.Time
+
+	activityRows, err := pgx.CollectRows(rows, pgx.RowToStructByName[activityRow])
 	if err != nil {
 		return err
+	}
+
+	// postgres_stat_activity_connections
+	for _, row := range activityRows {
+		ch <- prometheus.MustNewConstMetric(c.connections, prometheus.GaugeValue, row.count, row.datname, row.state)
 	}
 
 	err = conn.QueryRow(ctx, statActivityScraperBackendStartQuery).Scan(&oldestBackend)

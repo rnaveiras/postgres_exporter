@@ -161,65 +161,58 @@ func (c *statDatabaseScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Vers
 	}
 	defer rows.Close()
 
-	var datname string
-	var numbackends, tupReturned, tupFetched, tupInserted, tupUpdated, tupDeleted, xactCommit, xactRollback,
-		blksRead, blksHit, conflicts, deadlocks, tempFiles, tempBytes float64
-	for rows.Next() {
-		if err := rows.Scan(&datname,
-			&numbackends,
-			&tupReturned,
-			&tupFetched,
-			&tupInserted,
-			&tupUpdated,
-			&tupDeleted,
-			&xactCommit,
-			&xactRollback,
-			&blksRead,
-			&blksHit,
-			&conflicts,
-			&deadlocks,
-			&tempFiles,
-			&tempBytes); err != nil {
-			return err
-		}
-
-		if rows.Err() != nil {
-			return err
-		}
-
-		// postgres_stat_database_numbackends
-		ch <- prometheus.MustNewConstMetric(c.numbackends, prometheus.GaugeValue, numbackends, datname)
-		// postgres_stat_database_tup_returned_total
-		ch <- prometheus.MustNewConstMetric(c.tupReturned, prometheus.CounterValue, tupReturned, datname)
-		// postgres_stat_database_tup_fetched_total
-		ch <- prometheus.MustNewConstMetric(c.tupFetched, prometheus.CounterValue, tupFetched, datname)
-		// postgres_stat_database_tup_inserted_total
-		ch <- prometheus.MustNewConstMetric(c.tupInserted, prometheus.CounterValue, tupInserted, datname)
-		// postgres_stat_database_tup_updated_total
-		ch <- prometheus.MustNewConstMetric(c.tupUpdated, prometheus.CounterValue, tupUpdated, datname)
-		// postgres_stat_database_tup_deleted_total
-		ch <- prometheus.MustNewConstMetric(c.tupDeleted, prometheus.CounterValue, tupUpdated, datname)
-		// postgres_stat_database_xact_commit_total
-		ch <- prometheus.MustNewConstMetric(c.xactCommit, prometheus.CounterValue, xactCommit, datname)
-		// postgres_stat_database_tup_xact_rollback_total
-		ch <- prometheus.MustNewConstMetric(c.xactRollback, prometheus.CounterValue, xactRollback, datname)
-		// postgres_stat_database_blks_read_total
-		ch <- prometheus.MustNewConstMetric(c.blksRead, prometheus.CounterValue, blksRead, datname)
-		// postgres_stat_database_blks_hit_total
-		ch <- prometheus.MustNewConstMetric(c.blksHit, prometheus.CounterValue, blksHit, datname)
-		// postgres_stat_database_conflicts_total
-		ch <- prometheus.MustNewConstMetric(c.conflicts, prometheus.CounterValue, conflicts, datname)
-		// postgres_stat_database_deadlocks_total
-		ch <- prometheus.MustNewConstMetric(c.deadlocks, prometheus.CounterValue, deadlocks, datname)
-		// postgres_stat_database_temp_files_total
-		ch <- prometheus.MustNewConstMetric(c.tempFiles, prometheus.CounterValue, tempFiles, datname)
-		// postgres_stat_database_temp_bytes_total
-		ch <- prometheus.MustNewConstMetric(c.tempBytes, prometheus.CounterValue, tempBytes, datname)
+	type databaseRow struct {
+		datname      string
+		numbackends  float64
+		tupReturned  float64
+		tupFetched   float64
+		tupInserted  float64
+		tupUpdated   float64
+		tupDeleted   float64 // Used in metrics below
+		xactCommit   float64
+		xactRollback float64
+		blksRead     float64
+		blksHit      float64
+		conflicts    float64
+		deadlocks    float64
+		tempFiles    float64
+		tempBytes    float64
 	}
 
-	err = rows.Err()
+	dbRows, err := pgx.CollectRows(rows, pgx.RowToStructByName[databaseRow])
 	if err != nil {
 		return err
+	}
+
+	for _, row := range dbRows {
+		// postgres_stat_database_numbackends
+		ch <- prometheus.MustNewConstMetric(c.numbackends, prometheus.GaugeValue, row.numbackends, row.datname)
+		// postgres_stat_database_tup_returned_total
+		ch <- prometheus.MustNewConstMetric(c.tupReturned, prometheus.CounterValue, row.tupReturned, row.datname)
+		// postgres_stat_database_tup_fetched_total
+		ch <- prometheus.MustNewConstMetric(c.tupFetched, prometheus.CounterValue, row.tupFetched, row.datname)
+		// postgres_stat_database_tup_inserted_total
+		ch <- prometheus.MustNewConstMetric(c.tupInserted, prometheus.CounterValue, row.tupInserted, row.datname)
+		// postgres_stat_database_tup_updated_total
+		ch <- prometheus.MustNewConstMetric(c.tupUpdated, prometheus.CounterValue, row.tupUpdated, row.datname)
+		// postgres_stat_database_tup_deleted_total
+		ch <- prometheus.MustNewConstMetric(c.tupDeleted, prometheus.CounterValue, row.tupDeleted, row.datname)
+		// postgres_stat_database_xact_commit_total
+		ch <- prometheus.MustNewConstMetric(c.xactCommit, prometheus.CounterValue, row.xactCommit, row.datname)
+		// postgres_stat_database_tup_xact_rollback_total
+		ch <- prometheus.MustNewConstMetric(c.xactRollback, prometheus.CounterValue, row.xactRollback, row.datname)
+		// postgres_stat_database_blks_read_total
+		ch <- prometheus.MustNewConstMetric(c.blksRead, prometheus.CounterValue, row.blksRead, row.datname)
+		// postgres_stat_database_blks_hit_total
+		ch <- prometheus.MustNewConstMetric(c.blksHit, prometheus.CounterValue, row.blksHit, row.datname)
+		// postgres_stat_database_conflicts_total
+		ch <- prometheus.MustNewConstMetric(c.conflicts, prometheus.CounterValue, row.conflicts, row.datname)
+		// postgres_stat_database_deadlocks_total
+		ch <- prometheus.MustNewConstMetric(c.deadlocks, prometheus.CounterValue, row.deadlocks, row.datname)
+		// postgres_stat_database_temp_files_total
+		ch <- prometheus.MustNewConstMetric(c.tempFiles, prometheus.CounterValue, row.tempFiles, row.datname)
+		// postgres_stat_database_temp_bytes_total
+		ch <- prometheus.MustNewConstMetric(c.tempBytes, prometheus.CounterValue, row.tempBytes, row.datname)
 	}
 
 	return nil

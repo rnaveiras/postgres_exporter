@@ -50,8 +50,7 @@ func (*diskUsageScraper) Name() string {
 }
 
 func (c *diskUsageScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
-	var datname, schemaname, tablename, indexname string
-	var sizeBytes float64
+	var datname string
 	var rows pgx.Rows
 	var err error
 
@@ -66,18 +65,20 @@ func (c *diskUsageScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version
 	}
 	defer rows.Close()
 
-	for rows.Next() {
-		if err := rows.Scan(&schemaname, &tablename, &sizeBytes); err != nil {
-			return err
-		}
-
-		// postgres_disk_usage_table_bytes
-		ch <- prometheus.MustNewConstMetric(c.tableUsage, prometheus.GaugeValue, sizeBytes, datname, schemaname, tablename)
+	type tableRow struct {
+		schemaname string
+		tablename  string
+		sizeBytes  float64
 	}
 
-	err = rows.Err()
+	tableRows, err := pgx.CollectRows(rows, pgx.RowToStructByName[tableRow])
 	if err != nil {
 		return err
+	}
+
+	// postgres_disk_usage_table_bytes
+	for _, row := range tableRows {
+		ch <- prometheus.MustNewConstMetric(c.tableUsage, prometheus.GaugeValue, row.sizeBytes, datname, row.schemaname, row.tablename)
 	}
 
 	// Scan index bytes
@@ -87,18 +88,21 @@ func (c *diskUsageScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version
 	}
 	defer rows.Close()
 
-	for rows.Next() {
-		if err := rows.Scan(&schemaname, &tablename, &indexname, &sizeBytes); err != nil {
-			return err
-		}
-
-		// postgres_disk_usage_index_bytes
-		ch <- prometheus.MustNewConstMetric(c.indexUsage, prometheus.GaugeValue, sizeBytes, datname, schemaname, tablename, indexname)
+	type indexRow struct {
+		schemaname string
+		tablename  string
+		indexname  string
+		sizeBytes  float64
 	}
 
-	err = rows.Err()
+	indexRows, err := pgx.CollectRows(rows, pgx.RowToStructByName[indexRow])
 	if err != nil {
 		return err
+	}
+
+	// postgres_disk_usage_index_bytes
+	for _, row := range indexRows {
+		ch <- prometheus.MustNewConstMetric(c.indexUsage, prometheus.GaugeValue, row.sizeBytes, datname, row.schemaname, row.tablename, row.indexname)
 	}
 
 	return nil
