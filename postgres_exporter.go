@@ -122,7 +122,8 @@ func main() {
 	// ParseConfig creates a ConnConfig from a connection string.
 	connConfig, err := pgx.ParseConfig(cfg.DataSource)
 	if err != nil {
-		logger.Error("error parse config", slog.Any(errorKey, err))
+		logger.Error("error parse config",
+			slog.Any(errorKey, err))
 		os.Exit(exitCodeError)
 	}
 
@@ -191,7 +192,8 @@ func main() {
 	go func() {
 		err = server.ListenAndServe()
 		if err != nil {
-			logger.Error("failed listen and server", slog.Any(errorKey, err))
+			logger.Error("failed listen and server",
+				slog.Any(errorKey, err))
 		}
 	}()
 
@@ -214,7 +216,7 @@ func main() {
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error("server forced to shutdown",
-			errorKey, err)
+			slog.Any(errorKey, err))
 	}
 
 	logger.Info("server gracefully stopped")
@@ -233,7 +235,8 @@ func catchHandler(logger *slog.Logger, metricsPath string) http.Handler {
                </body>
                </html>`))
 		if err != nil {
-			logger.Error("catch all handler", slog.Any(errorKey, err))
+			logger.Error("catch all handler",
+				slog.Any(errorKey, err))
 		}
 	})
 }

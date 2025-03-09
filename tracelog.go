@@ -7,6 +7,10 @@ import (
 	"github.com/jackc/pgx/v5/tracelog"
 )
 
+const (
+	pgxLogMessage = "pgx log"
+)
+
 // SlogAdapter adapts slog to pgx logger interface
 type SlogAdapter struct {
 	logger *slog.Logger
@@ -26,5 +30,8 @@ func (s *SlogAdapter) Log(ctx context.Context, level tracelog.LogLevel, msg stri
 		slogLevel = slog.LevelError
 	}
 
-	s.logger.LogAttrs(ctx, slogLevel, msg, slog.Any("pgx_data", data))
+	s.logger.LogAttrs(ctx, slogLevel, pgxLogMessage,
+		slog.Group("pgx",
+			slog.String("msg", msg),
+			slog.Any("data", data)))
 }
