@@ -31,6 +31,7 @@ linters:
     - importas
     - spancheck
     - usestdlibvars
+    - sloglint
     # - wrapcheck
 
 linters-settings:
@@ -49,3 +50,5 @@ linters-settings:
   sloglint:
     no-global: "all"
     key-naming-case: snake
+    static-msg: true
+    args-on-sep-lines: true

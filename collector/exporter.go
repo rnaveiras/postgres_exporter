@@ -130,7 +130,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(upDesc, prometheus.GaugeValue, failureValue)
-		e.logger.Error("exporter collect", slog.Any(errorKey, err))
+		e.logger.Error("exporter collect",
+			slog.Any(errorKey, err))
 		return // cannot continue without a valid connection
 	}
 
@@ -140,7 +141,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	var version string
 	if err := conn.QueryRow(e.ctx, infoQuery).Scan(&version); err != nil {
-		e.logger.Error("info query", slog.Any(errorKey, err))
+		e.logger.Error("info query",
+			slog.Any(errorKey, err))
 		return // cannot continue without a version
 	}
 
@@ -149,21 +151,25 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(infoDesc, prometheus.GaugeValue, infoMetricValue, v.String())
 
 	// discovery databases
-	e.logger.Debug(fmt.Sprintf("excludedDatabases: %s", strings.Join(e.excludedDatabases, ",")))
+	e.logger.Debug("excluded databases",
+		slog.String("databases", strings.Join(e.excludedDatabases, ",")))
 
 	rows, err := conn.Query(e.ctx, listDatnameQuery, e.excludedDatabases)
 	if err != nil {
-		e.logger.Error("error query datnames", slog.Any(errorKey, err))
+		e.logger.Error("error query datnames",
+			slog.Any(errorKey, err))
 	}
 
 	var dbnames []string
 	dbnames, err = pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
-		e.logger.Error("list datname query", slog.Any(errorKey, err))
+		e.logger.Error("error list datname query",
+			slog.Any(errorKey, err))
 		return
 	}
 
-	e.logger.Debug(fmt.Sprintf("datnames found: %s", strings.Join(dbnames, ",")))
+	e.logger.Debug("debug datnames found",
+		slog.String("databases", strings.Join(dbnames, ",")))
 
 	// run global scrapers
 	for _, scraper := range e.scrapers {
@@ -178,7 +184,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		// establish a new connection
 		conn, err := pgx.ConnectConfig(e.ctx, e.connConfig)
 		if err != nil {
-			e.logger.Error("error pgx connection", slog.Any(errorKey, err))
+			e.logger.Error("error pgx connection",
+				slog.Any(errorKey, err))
 			return // cannot continue without a valid connection
 		}
 
@@ -198,12 +205,16 @@ func (e *Exporter) scrape(scraper Scraper, conn *pgx.Conn, version Version, ch c
 
 	var success float64
 
-	logger := e.logger.With("scraper", scraper.Name(), "duration", duration.Seconds())
+	logger := e.logger.With(
+		"scraper", scraper.Name(),
+		"duration", duration.Seconds())
 	if err != nil {
-		logger.Error("failed scrape", slog.Any(errorKey, err))
+		logger.Error("failed scrape",
+			slog.Any(errorKey, err))
 		success = failureValue
 	} else {
-		logger.Debug("", "event", "scraper.success")
+		logger.Debug("",
+			"event", "scraper.success")
 		success = successValue
 	}
 
