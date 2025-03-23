@@ -9,14 +9,14 @@
   "pre-commit": {
     "enabled": true
   },
-  reviewers": [
+  “reviewers": [
     "rnaveiras"
   ],
   "schedule": [
     "before 9am on Saturday"
   ],
   postUpdateOptions: [
-    gomodTidy'
+    “gomodTidy”
   ],
   "timezone": "Europe/London",
   "prHourlyLimit": 5,
