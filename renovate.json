@@ -3,13 +3,20 @@
   "extends": [
     "github>rnaveiras/.github:renovate.json",
     "config:recommended",
-    "helpers:pinGitHubActionDigests"
+    "helpers:pinGitHubActionDigests",
+    "semanticCommits": "enabled"
   ],
   "pre-commit": {
     "enabled": true
   },
+  reviewers": [
+    "rnaveiras"
+  ],
   "schedule": [
     "before 9am on Saturday"
+  ],
+  postUpdateOptions: [
+    gomodTidy'
   ],
   "timezone": "Europe/London",
   "prHourlyLimit": 5,
