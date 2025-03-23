@@ -4,7 +4,7 @@
     "github>rnaveiras/.github:renovate.json",
     "config:recommended",
     "helpers:pinGitHubActionDigests",
-     "semanticCommits": "enabled"
+    "semanticCommits": "enabled"
   ],
   "pre-commit": {
     "enabled": true
@@ -16,7 +16,7 @@
     "before 9am on Saturday"
   ],
   postUpdateOptions: [
-    gomodTidy',
+    gomodTidy'
   ],
   "timezone": "Europe/London",
   "prHourlyLimit": 5,
