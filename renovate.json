@@ -4,7 +4,7 @@
     "github>rnaveiras/.github:renovate.json",
     "config:recommended",
     "helpers:pinGitHubActionDigests",
-    "::semanticCommits"
+    ":semanticCommits"
   ],
   "pre-commit": {
     "enabled": true
