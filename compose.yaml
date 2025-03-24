@@ -78,6 +78,65 @@ services:
     profiles:
       - postgres17
 
+  # Replication setup with main and replica
+  postgres_main:
+    <<: *postgres
+    image: postgres:13.20
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_main:/var/lib/postgresql/data
+      - ./docker/postgresql_main.conf:/etc/postgresql/postgresql.conf
+      - ./docker/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    networks:
+      postgres_exporter:
+        aliases:
+          - postgres_main
+    profiles:
+      - replication
+
+  postgres_replica:
+    <<: *postgres
+    image: postgres:13.20
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data_replica:/var/lib/postgresql/data
+      - ./docker/postgresql_replica.conf:/etc/postgresql/postgresql.conf
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      PGPASSWORD: postgres
+      PGUSER: postgres
+      PRIMARY_HOST: postgres_main
+    entrypoint: []
+    command: >
+      bash -c "
+      echo 'Waiting for postgres_main to be ready...' &&
+      until pg_isready -h postgres_main -p 5432; do sleep 1; done &&
+      echo 'postgres_main is ready, starting replication setup...' &&
+      rm -rf /var/lib/postgresql/data/* &&
+      pg_basebackup -h postgres_main -p 5432 -U postgres -D /var/lib/postgresql/data -Fp -Xs -P -v &&
+      echo \"primary_conninfo = 'host=postgres_main port=5432 user=postgres password=postgres application_name=replica1'\" >> /var/lib/postgresql/data/postgresql.auto.conf &&
+      touch /var/lib/postgresql/data/standby.signal &&
+      chown -R postgres:postgres /var/lib/postgresql/data &&
+      echo 'Starting PostgreSQL in replica mode...' &&
+      exec docker-entrypoint.sh postgres -c config_file=/etc/postgresql/postgresql.conf
+      "
+    depends_on:
+      - postgres_main
+    networks:
+      postgres_exporter:
+        aliases:
+          - postgres_replica
+    profiles:
+      - replication
+
   prometheus:
     <<: *network
     image: quay.io/prometheus/prometheus:v3.3.0@sha256:339ce86a59413be18d0e445472891d022725b4803fab609069110205e79fb2f1
@@ -88,6 +147,7 @@ services:
       - prometheus_data:/docker/prometheus_data
     profiles:
       - default
+      - replication
 
   postgres-exporter:
     <<: *network
@@ -112,6 +172,52 @@ services:
     profiles:
       - default
 
+  postgres-exporter-main:
+    <<: *network
+    build:
+      context: .
+    command:
+      [
+        "--log.level=debug",
+        "--log.format=logfmt",
+        "--db.excluded-databases=rdsadmin",
+        "--db.excluded-databases=cloudsqladmin",
+      ]
+    entrypoint: ["/bin/postgres_exporter"]
+    ports:
+      - "9187:9187"
+    environment:
+      - PGHOST=postgres_main
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
+      - PGPGDATABASE=postgres
+      - PGSSLMODE=disable
+    profiles:
+      - replication
+
+  postgres-exporter-replica:
+    <<: *network
+    build:
+      context: .
+    command:
+      [
+        "--log.level=debug",
+        "--log.format=logfmt",
+        "--db.excluded-databases=rdsadmin",
+        "--db.excluded-databases=cloudsqladmin",
+      ]
+    entrypoint: ["/bin/postgres_exporter"]
+    ports:
+      - "9188:9187"
+    environment:
+      - PGHOST=postgres_replica
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
+      - PGPGDATABASE=postgres
+      - PGSSLMODE=disable
+    profiles:
+      - replication
+
   grafana:
     <<: *network
     image: grafana/grafana:11.6.0@sha256:62d2b9d20a19714ebfe48d1bb405086081bc602aa053e28cf6d73c7537640dfb
@@ -129,6 +235,7 @@ services:
       - prometheus
     profiles:
       - default
+      - replication
 
 volumes:
   prometheus_data:
@@ -138,6 +245,8 @@ volumes:
   postgres_data_15:
   postgres_data_16:
   postgres_data_17:
+  postgres_data_main:
+  postgres_data_replica:
 
 networks:
   postgres_exporter:

@@ -13,3 +13,17 @@ scrape_configs:
   - job_name: "postgres"
     static_configs:
       - targets: ["postgres-exporter:9187"]
+  - job_name: "postgres_replication_main"
+    static_configs:
+      - targets: ["postgres-exporter-main:9187"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: postgres_main
+  - job_name: "postgres_replication_replica"
+    static_configs:
+      - targets: ["postgres-exporter-replica:9187"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: postgres_replica
