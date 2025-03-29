@@ -19,7 +19,7 @@ env:
   PUSH_ARTIFACT: |
     ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request' }}
   GO_VERSION: "1.24.1"
-  GOLANGCI_LINT_VERSION: "v1.64.4"
+  GOLANGCI_LINT_VERSION: "v2.0.2"
 
 jobs:
   linters:
@@ -41,7 +41,7 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
       - name: Lint Dockerfile
-        uses: hadolint/hadolint-action@master
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
         with:
           dockerfile: "Dockerfile"
 
