@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/jackc/pgx/v5 v5.7.3
+	github.com/jackc/pgx/v5 v5.7.4
 	github.com/prometheus/client_golang v1.21.1
 	github.com/prometheus/common v0.63.0
 )
