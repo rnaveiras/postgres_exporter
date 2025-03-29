@@ -4,6 +4,10 @@ version: "2"
 linters:
   enable:
     - staticcheck
+    - errcheck
+    - govet
+    - ineffassign
+    - unused
     - bodyclose
     - errname
     - errorlint
@@ -20,6 +24,8 @@ linters:
     - spancheck
     - sqlclosecheck
     - usestdlibvars
+    - gocyclo
+    - gocritic
   settings:
     revive:
       enable-all-rules: true
