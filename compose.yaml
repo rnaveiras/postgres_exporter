@@ -27,7 +27,7 @@ services:
     <<: *postgres
     # renovate: datasource=docker depName=postgres versioning=docker
     # renovate: allowedVersions=13.x
-    image: postgres:13.21@sha256:9b6a9504a4b804c8f0cf52f4d16477289f8e1dfa269a689d778feaca6fbe1f4f
+    image: postgres:17.5@sha256:6cf6142afacfa89fb28b894d6391c7dcbf6523c33178bdc33e782b3b533a9342
     volumes:
       - postgres_data_13:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
@@ -38,7 +38,7 @@ services:
     <<: *postgres
     # renovate: datasource=docker depName=postgres versioning=docker
     # renovate: allowedVersions=14.x
-    image: postgres:14.18@sha256:bbcaba1d74865ee6d6318b5e297d0df73d1f6b6d995cd892b60a2cf1440b716a
+    image: postgres:17.5@sha256:6cf6142afacfa89fb28b894d6391c7dcbf6523c33178bdc33e782b3b533a9342
     volumes:
       - postgres_data_14:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
@@ -49,7 +49,7 @@ services:
     # renovate: datasource=docker depName=postgres versioning=docker
     # renovate: allowedVersions=15.x
     <<: *postgres
-    image: postgres:15.13@sha256:f57a3bdbf044f0b213fdc99f35a0d21c401608bf41f063176ec00c51df9655f7
+    image: postgres:17.5@sha256:6cf6142afacfa89fb28b894d6391c7dcbf6523c33178bdc33e782b3b533a9342
     volumes:
       - postgres_data_15:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
@@ -60,7 +60,7 @@ services:
     <<: *postgres
     # renovate: datasource=docker depName=postgres versioning=docker
     # renovate: allowedVersions=16.x
-    image: postgres:16.8@sha256:301bcb60b8a3ee4ab7e147932723e3abd1cef53516ce5210b39fd9fe5e3602ae
+    image: postgres:17.5@sha256:6cf6142afacfa89fb28b894d6391c7dcbf6523c33178bdc33e782b3b533a9342
     volumes:
       - postgres_data_16:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
@@ -71,7 +71,7 @@ services:
     # renovate: datasource=docker depName=postgres versioning=docker
     # renovate: allowedVersions=17.x
     <<: *postgres
-    image: postgres:17.2@sha256:3267c505060a0052e5aa6e5175a7b41ab6b04da2f8c4540fc6e98a37210aa2d3
+    image: postgres:17.5@sha256:6cf6142afacfa89fb28b894d6391c7dcbf6523c33178bdc33e782b3b533a9342
     volumes:
       - postgres_data_17:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
