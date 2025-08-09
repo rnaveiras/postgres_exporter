@@ -1,5 +1,5 @@
 [tools]
-go = "1.24.5"
+go = "1.24.6"
 golangci-lint = "2.2.2"
 pre-commit = "4.2.0"
 
