@@ -27,7 +27,7 @@ services:
     <<: *postgres
     # renovate: datasource=docker depName=postgres versioning=docker
     # renovate: allowedVersions=13.x
-    image: postgres:13.21@sha256:15a91325881847d76ecd89f27c82533bdcf099db363a0d4757c2f2756a323c1d
+    image: postgres:13.22@sha256:aedabd10a05c7304233d006a186a42d7d350b11e702d227dc09a99882dafa142
     volumes:
       - postgres_data_13:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
