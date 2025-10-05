@@ -71,7 +71,7 @@ services:
     # renovate: datasource=docker depName=postgres versioning=docker
     # renovate: allowedVersions=17.x
     <<: *postgres
-    image: postgres:17.6@sha256:14d1abe0b1c660ec3c7521786d1249157699ebc62b07ea84ab6aad5239f5251f
+    image: postgres:17.6@sha256:e6a4209d1a4893f2df3bdcde58f8926c3c929c4d51df90990ed1b36d83c1382a
     volumes:
       - postgres_data_17:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
