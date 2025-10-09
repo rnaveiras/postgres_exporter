@@ -22,12 +22,12 @@ func (s *SlogAdapter) Log(ctx context.Context, level tracelog.LogLevel, msg stri
 	switch level {
 	case tracelog.LogLevelTrace, tracelog.LogLevelDebug:
 		slogLevel = slog.LevelDebug
-	case tracelog.LogLevelInfo:
-		slogLevel = slog.LevelInfo
 	case tracelog.LogLevelWarn:
 		slogLevel = slog.LevelWarn
 	case tracelog.LogLevelError:
 		slogLevel = slog.LevelError
+	default:
+		slogLevel = slog.LevelInfo
 	}
 
 	s.logger.LogAttrs(ctx, slogLevel, pgxLogMessage,
