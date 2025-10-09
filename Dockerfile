@@ -1,7 +1,7 @@
-FROM golang:1.25.1-alpine3.21@sha256:331bde41663c297cba0f5abf37e929be644f3cbd84bf45f49b0df9d774f4d912 AS builder
+FROM golang:1.25.2-alpine3.21@sha256:01346535ae797d5bc7301aa6518051e9a66adf813fc99e09872a06417759f913 AS builder
 
-ENV PROMU_SHA256=f92fd94dbd5941c7f2925860c3d6a1f24b7630cb2b192df43835c8dda9e76b5d \
-  PROMU_VERSION=0.15.0
+ENV PROMU_SHA256=cf9ba0ccf20e0f95e898a9d7c366164f0ae9a16c5495ec4a1bf7182e3f6982c0 \
+  PROMU_VERSION=0.17.0
 
 SHELL ["/bin/ash", "-euox", "pipefail", "-c"]
 
@@ -21,7 +21,7 @@ RUN set -x \
   && promu build --verbose --prefix=./output \
   && find ./output
 
-FROM alpine:3.22@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1
+FROM alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412
 LABEL org.opencontainers.image.authors="Raul Naveiras <rnaveiras@gmail.com>"
 
 COPY --from=builder /go/src/app/output/postgres_exporter /bin/postgres_exporter
