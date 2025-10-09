@@ -202,6 +202,7 @@ func (c *statVacuumProgressScraper) Scrape(ctx context.Context, conn *pgx.Conn, 
 			// postgres_stat_vacuum_progress_phase_performing_final_cleanup
 			ch <- prometheus.MustNewConstMetric(c.phasePerformingFinalCleanup, prometheus.GaugeValue, metricEnabled,
 				pid, queryStart, schemaname, datname, relname)
+		default:
 		}
 
 		// postgres_stat_vacuum_progress_heap_blks_total

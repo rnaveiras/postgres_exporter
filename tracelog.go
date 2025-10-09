@@ -28,6 +28,8 @@ func (s *SlogAdapter) Log(ctx context.Context, level tracelog.LogLevel, msg stri
 		slogLevel = slog.LevelWarn
 	case tracelog.LogLevelError:
 		slogLevel = slog.LevelError
+	default:
+		slogLevel = slog.LevelInfo
 	}
 
 	s.logger.LogAttrs(ctx, slogLevel, pgxLogMessage,
