@@ -25,8 +25,6 @@ x-network: &network
 services:
   postgres13:
     <<: *postgres
-    # renovate: datasource=docker depName=postgres versioning=docker
-    # renovate: allowedVersions=13.x
     image: postgres:13.22@sha256:f8e950624f314c103c9f40d1ba24ee67f1b16b529b342420d851d9b9d52449c3
     volumes:
       - postgres_data_13:/var/lib/postgresql/data
@@ -36,8 +34,6 @@ services:
 
   postgres14:
     <<: *postgres
-    # renovate: datasource=docker depName=postgres versioning=docker
-    # renovate: allowedVersions=14.x
     image: postgres:14.19@sha256:fbd63b8e1eb2b318d342e8ad279891f622aa5ff69bd95e5683cc915301218bcf
     volumes:
       - postgres_data_14:/var/lib/postgresql/data
@@ -46,8 +42,6 @@ services:
       - postgres14
 
   postgres15:
-    # renovate: datasource=docker depName=postgres versioning=docker
-    # renovate: allowedVersions=15.x
     <<: *postgres
     image: postgres:15.14@sha256:c189d272e4fcdd1ac419adee675d30be3d389c22ee770d593f15819d22a68a0d
     volumes:
@@ -58,8 +52,6 @@ services:
 
   postgres16:
     <<: *postgres
-    # renovate: datasource=docker depName=postgres versioning=docker
-    # renovate: allowedVersions=16.x
     image: postgres:16.10@sha256:fb9aa6d07b0fe53e94e8470977f316d1cdb39b8cdb33c45279ff0bbe32067c25
     volumes:
       - postgres_data_16:/var/lib/postgresql/data
@@ -68,8 +60,6 @@ services:
       - postgres16
 
   postgres17:
-    # renovate: datasource=docker depName=postgres versioning=docker
-    # renovate: allowedVersions=17.x
     <<: *postgres
     image: postgres:17.6@sha256:e6a4209d1a4893f2df3bdcde58f8926c3c929c4d51df90990ed1b36d83c1382a
     volumes:
@@ -77,6 +67,15 @@ services:
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
     profiles:
       - postgres17
+
+  postgres18:
+    <<: *postgres
+    image: postgres:18.0@sha256:329f1ece6f7d38093c0b0fd8bc59b398e710d438e979c602767361236ffd5583
+    volumes:
+      - postgres_data_18:/var/lib/postgresql/data
+      - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
+    profiles:
+      - postgres18
 
   prometheus:
     <<: *network
@@ -138,6 +137,7 @@ volumes:
   postgres_data_15:
   postgres_data_16:
   postgres_data_17:
+  postgres_data_18:
 
 networks:
   postgres_exporter:

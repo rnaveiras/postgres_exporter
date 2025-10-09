@@ -20,5 +20,85 @@
   "timezone": "Europe/London",
   "prHourlyLimit": 5,
   "prConcurrentLimit": 10,
-  "dependencyDashboard": true
+  "dependencyDashboard": true,
+  "packageRules": [
+    {
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchCurrentVersion": "/^13\\./",
+      "allowedVersions": "/^13\\./"
+    },
+    {
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchCurrentVersion": "/^14\\./",
+      "allowedVersions": "/^14\\./"
+    },
+    {
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchCurrentVersion": "/^15\\./",
+      "allowedVersions": "/^15\\./"
+    },
+    {
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchCurrentVersion": "/^16\\./",
+      "allowedVersions": "/^16\\./"
+    },
+    {
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchCurrentVersion": "/^17\\./",
+      "allowedVersions": "/^17\\./"
+    },
+    {
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchCurrentVersion": "/^18\\./",
+      "allowedVersions": "/^18\\./"
+    }
+  ]
 }
