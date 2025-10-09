@@ -12,20 +12,36 @@ const (
 	// Scrape query
 	statActivityQuery = `
 WITH states AS (
-  SELECT datname
-	   , unnest(array['active',
-					  'idle',
-					  'idle in transaction',
-					  'idle in transaction (aborted)',
-					  'fastpath function call',
-					  'disabled']) AS state FROM pg_database
+    SELECT
+        datname
+        , unnest(ARRAY['starting'
+            , 'active'
+            , 'idle'
+            , 'idle in transaction'
+            , 'idle in transaction (aborted)'
+            , 'fastpath function call'
+            , 'disabled']) AS state
+    FROM
+        pg_database
 )
-SELECT datname, state, COALESCE(count, 0) as count
-  FROM states LEFT JOIN (
-	   SELECT datname, state, count(*)::float
-       FROM pg_stat_activity GROUP BY datname, state
-	   ) AS activity
- USING (datname, state) /*postgres_exporter*/`
+SELECT
+    datname
+    , state
+    , COALESCE(count , 0) AS count
+FROM
+    states
+    LEFT JOIN (
+        SELECT
+            datname
+            , state
+            , count(*)::float
+        FROM
+            pg_stat_activity
+        GROUP BY
+            datname
+            , state) AS activity USING (datname , state)
+/*postgres_exporter*/
+`
 
 	// Oldest transaction timestamp
 	// ignore when backend_xid is null, so excludes autovacuumn, autoanalyze
@@ -117,25 +133,27 @@ func (c *statActivityScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Vers
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
-	var datname, state string
-	var count, oldestTx, oldestActive, oldestSnapshot, oldestXmin float64
-	var oldestBackend time.Time
-
-	for rows.Next() {
-		if err := rows.Scan(&datname, &state, &count); err != nil {
-			return err
-		}
-
-		// postgres_stat_activity_connections
-		ch <- prometheus.MustNewConstMetric(c.connections, prometheus.GaugeValue, count, datname, state)
+	// statActivityRow represents a row from the pg_stat_activity query result.
+	// Field names match the SQL column names (case-insensitive) for pgx.RowToStructByName.
+	type statActivityRow struct {
+		Datname string  // Database name
+		State   string  // Connection state (starting, active, idle, etc.)
+		Count   float64 // Number of connections in this state
 	}
 
-	err = rows.Err()
+	results, err := pgx.CollectRows(rows, pgx.RowToStructByName[statActivityRow])
 	if err != nil {
 		return err
 	}
+
+	for _, row := range results {
+		// postgres_stat_activity_connections
+		ch <- prometheus.MustNewConstMetric(c.connections, prometheus.GaugeValue, row.Count, row.Datname, row.State)
+	}
+
+	var oldestTx, oldestActive, oldestSnapshot, oldestXmin float64
+	var oldestBackend time.Time
 
 	err = conn.QueryRow(ctx, statActivityScraperBackendStartQuery).Scan(&oldestBackend)
 	if err != nil {
