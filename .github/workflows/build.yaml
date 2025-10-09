@@ -18,8 +18,8 @@ env:
   # true when a push on the main branch
   PUSH_ARTIFACT: |
     ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request' }}
-  GO_VERSION: "1.24.1"
-  GOLANGCI_LINT_VERSION: "v2.0.2"
+  GO_VERSION: "1.25.2"
+  GOLANGCI_LINT_VERSION: "v2.5.0"
 
 jobs:
   linters:
