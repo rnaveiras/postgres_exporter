@@ -143,6 +143,35 @@ func (*statVacuumProgressScraper) Name() string {
 	return "StatVacuumProgressScraper"
 }
 
+// emitPhaseMetric emits a Prometheus metric for the given vacuum progress phase.
+// It maps PostgreSQL vacuum phases to corresponding phase-specific metrics.
+func (c *statVacuumProgressScraper) emitPhaseMetric(phase, pid, queryStart, schemaname, datname, relname string, ch chan<- prometheus.Metric) {
+	switch phase {
+	case "initializing":
+		ch <- prometheus.MustNewConstMetric(c.phaseInitializing, prometheus.GaugeValue, metricEnabled,
+			pid, queryStart, schemaname, datname, relname)
+	case "scanning heap":
+		ch <- prometheus.MustNewConstMetric(c.phaseScanningHeap, prometheus.GaugeValue, metricEnabled,
+			pid, queryStart, schemaname, datname, relname)
+	case "vacuuming indexes":
+		ch <- prometheus.MustNewConstMetric(c.phaseVacuumingIndexes, prometheus.GaugeValue, metricEnabled,
+			pid, queryStart, schemaname, datname, relname)
+	case "vacuuming heap":
+		ch <- prometheus.MustNewConstMetric(c.phaseVacuumingHeap, prometheus.GaugeValue, metricEnabled,
+			pid, queryStart, schemaname, datname, relname)
+	case "cleaning up indexes":
+		ch <- prometheus.MustNewConstMetric(c.phaseCleaningUpIndexes, prometheus.GaugeValue, metricEnabled,
+			pid, queryStart, schemaname, datname, relname)
+	case "truncating heap":
+		ch <- prometheus.MustNewConstMetric(c.phaseTruncatingHeap, prometheus.GaugeValue, metricEnabled,
+			pid, queryStart, schemaname, datname, relname)
+	case "performing final cleanup":
+		ch <- prometheus.MustNewConstMetric(c.phasePerformingFinalCleanup, prometheus.GaugeValue, metricEnabled,
+			pid, queryStart, schemaname, datname, relname)
+	default:
+	}
+}
+
 func (c *statVacuumProgressScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
 	rows, err := conn.Query(ctx, statVacuumProgress)
 	if err != nil {
@@ -173,37 +202,7 @@ func (c *statVacuumProgressScraper) Scrape(ctx context.Context, conn *pgx.Conn, 
 		ch <- prometheus.MustNewConstMetric(c.running, prometheus.GaugeValue, metricEnabled,
 			pid, queryStart, schemaname, datname, relname)
 
-		switch phase {
-		case "initializing":
-			// postgres_stat_vacuum_progress_phase_initializing
-			ch <- prometheus.MustNewConstMetric(c.phaseInitializing, prometheus.GaugeValue, metricEnabled,
-				pid, queryStart, schemaname, datname, relname)
-		case "scanning heap":
-			// postgres_stat_vacuum_progress_phase_scanning_heap
-			ch <- prometheus.MustNewConstMetric(c.phaseScanningHeap, prometheus.GaugeValue, metricEnabled,
-				pid, queryStart, schemaname, datname, relname)
-		case "vacuuming indexes":
-			// postgres_stat_vacuum_progress_phase_vacuuming_indexes
-			ch <- prometheus.MustNewConstMetric(c.phaseVacuumingIndexes, prometheus.GaugeValue, metricEnabled,
-				pid, queryStart, schemaname, datname, relname)
-		case "vacuuming heap":
-			// postgres_stat_vacuum_progress_phase_vacuuming_heap
-			ch <- prometheus.MustNewConstMetric(c.phaseVacuumingHeap, prometheus.GaugeValue, metricEnabled,
-				pid, queryStart, schemaname, datname, relname)
-		case "cleaning up indexes":
-			// postgres_stat_vacuum_progress_phase_cleaning_up_indexes
-			ch <- prometheus.MustNewConstMetric(c.phaseCleaningUpIndexes, prometheus.GaugeValue, metricEnabled,
-				pid, queryStart, schemaname, datname, relname)
-		case "truncating heap":
-			// postgres_stat_vacuum_progress_phase_truncating_heap
-			ch <- prometheus.MustNewConstMetric(c.phaseTruncatingHeap, prometheus.GaugeValue, metricEnabled,
-				pid, queryStart, schemaname, datname, relname)
-		case "performing final cleanup":
-			// postgres_stat_vacuum_progress_phase_performing_final_cleanup
-			ch <- prometheus.MustNewConstMetric(c.phasePerformingFinalCleanup, prometheus.GaugeValue, metricEnabled,
-				pid, queryStart, schemaname, datname, relname)
-		default:
-		}
+		c.emitPhaseMetric(phase, pid, queryStart, schemaname, datname, relname, ch)
 
 		// postgres_stat_vacuum_progress_heap_blks_total
 		ch <- prometheus.MustNewConstMetric(c.heapBlksTotal, prometheus.GaugeValue, heapBlksTotal, pid, queryStart, schemaname, datname, relname)
