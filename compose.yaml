@@ -43,7 +43,7 @@ services:
 
   postgres15:
     <<: *postgres
-    image: postgres:15.14@sha256:c189d272e4fcdd1ac419adee675d30be3d389c22ee770d593f15819d22a68a0d
+    image: postgres:15.14@sha256:424e79b81868f5fc5cf515eaeac69d288692ebcca7db86d98f91b50d4bce64bb
     volumes:
       - postgres_data_15:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
