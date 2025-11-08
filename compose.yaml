@@ -25,7 +25,7 @@ x-network: &network
 services:
   postgres13:
     <<: *postgres
-    image: postgres:13.22@sha256:9a41ba632f72722f4480663eef10d99a35f0e48b1835a6d1ccfc0b606497616d
+    image: postgres:13.22@sha256:4ae62351c3f68368162e2031ce1e2e1e3dca89907b0823d891819a1573841f61
     volumes:
       - postgres_data_13:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
