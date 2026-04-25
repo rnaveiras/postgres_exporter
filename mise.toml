@@ -1,7 +1,7 @@
 [tools]
 go = "1.26.2"
 golangci-lint = "2.11.4"
-pre-commit = "4.5.1"
+pre-commit = "4.6.0"
 
 [env]
 COMPOSE_PROFILES = 'default,postgres13'
