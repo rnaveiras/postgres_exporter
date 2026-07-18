@@ -21,7 +21,7 @@ RUN set -x \
   && promu build --verbose --prefix=./output \
   && find ./output
 
-FROM alpine:3.23.4@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 LABEL org.opencontainers.image.authors="Raul Naveiras <rnaveiras@gmail.com>"
 
 COPY --from=builder /go/src/app/output/postgres_exporter /bin/postgres_exporter
