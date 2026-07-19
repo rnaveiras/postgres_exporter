@@ -21,7 +21,33 @@
   "prHourlyLimit": 5,
   "prConcurrentLimit": 10,
   "dependencyDashboard": true,
+  // compose.yaml runs one postgres service per supported major as a test
+  // matrix, so no service may cross majors: an unpinned 13 would follow
+  // upstream to 18 and silently drop 13 from coverage. One rule per major is
+  // needed because each pairs matchCurrentVersion (which service it applies
+  // to) with a matching allowedVersions (the ceiling for that service) — a
+  // single combined rule could not vary the ceiling per service. Adding a
+  // major to compose.yaml means adding a rule here too.
   "packageRules": [
+    // Upstream rebuilds every supported postgres major at once, so digest-only
+    // bumps arrive as one PR per major. Group them into a single PR. Scoped to
+    // digests so tag bumps stay one-per-major: those change the tested server
+    // version and each needs its own compatibility check.
+    {
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchUpdateTypes": [
+        "digest"
+      ],
+      "groupName": "postgres docker digests"
+    },
     {
       "matchManagers": [
         "docker-compose"
