@@ -34,7 +34,7 @@ services:
 
   postgres14:
     <<: *postgres
-    image: postgres:14.23@sha256:caf49e3b10d377aa2cfee478591d623808527beb27125d38797b418013f72d81
+    image: postgres:14.23@sha256:2f439458ab6a57a925825ae14f9d06910e4fe4a41c8d4a0ae06397e65b707e1b
     volumes:
       - postgres_data_14:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
@@ -43,7 +43,7 @@ services:
 
   postgres15:
     <<: *postgres
-    image: postgres:15.18@sha256:74e110c41804365e3915fcc09d5e7a1eff50161aaa94d5da0e58e0cd75ae509c
+    image: postgres:15.18@sha256:6eb0add3b77c081df18aa518ce43df58fdcc40f2e6d868a6fd08038dc7acd425
     volumes:
       - postgres_data_15:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
@@ -52,7 +52,7 @@ services:
 
   postgres16:
     <<: *postgres
-    image: postgres:16.14@sha256:33f923b05f64ca54ac4401c01126a6b92afe839a0aa0a52bc5aeb5cc958e5f20
+    image: postgres:16.14@sha256:95206741a5b214807675e14165369d05b93a9cf692223b616d07cca227e74b0b
     volumes:
       - postgres_data_16:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
@@ -61,7 +61,7 @@ services:
 
   postgres17:
     <<: *postgres
-    image: postgres:17.10@sha256:a426e44bac0b759c95894d68e1a0ac03ecc20b619f498a91aae373bf06d8508d
+    image: postgres:17.10@sha256:7958605b474b3d264a969cb3a123d6aa00ad1e1fe9da8a69984dabb704d93317
     volumes:
       - postgres_data_17:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
@@ -70,7 +70,7 @@ services:
 
   postgres18:
     <<: *postgres
-    image: postgres:18.4@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a
+    image: postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
     volumes:
       - postgres_data_18:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
