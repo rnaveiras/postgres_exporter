@@ -61,7 +61,7 @@ services:
 
   postgres17:
     <<: *postgres
-    image: postgres:17.10@sha256:a426e44bac0b759c95894d68e1a0ac03ecc20b619f498a91aae373bf06d8508d
+    image: postgres:17.11@sha256:f4c66b820c6f974249089d3d16d86a3698eae11e8746eb6644b2271031e91232
     volumes:
       - postgres_data_17:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
