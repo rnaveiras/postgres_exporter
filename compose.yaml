@@ -34,7 +34,7 @@ services:
 
   postgres14:
     <<: *postgres
-    image: postgres:14.23@sha256:caf49e3b10d377aa2cfee478591d623808527beb27125d38797b418013f72d81
+    image: postgres:14.24@sha256:816cf7d06ec33116c8f54cf14197085be89f25291686229485ee7d53a785b901
     volumes:
       - postgres_data_14:/var/lib/postgresql/data
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
