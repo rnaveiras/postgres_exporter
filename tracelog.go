@@ -11,23 +11,25 @@ const (
 	pgxLogMessage = "pgx log"
 )
 
+// pgxToSlogLevel maps pgx log levels to slog levels. Levels missing from the map, including any added
+// by a newer pgx, log at slog.LevelInfo.
+var pgxToSlogLevel = map[tracelog.LogLevel]slog.Level{
+	tracelog.LogLevelTrace: slog.LevelDebug,
+	tracelog.LogLevelDebug: slog.LevelDebug,
+	tracelog.LogLevelInfo:  slog.LevelInfo,
+	tracelog.LogLevelWarn:  slog.LevelWarn,
+	tracelog.LogLevelError: slog.LevelError,
+	tracelog.LogLevelNone:  slog.LevelInfo,
+}
+
 // SlogAdapter adapts slog to pgx logger interface.
 type SlogAdapter struct {
 	logger *slog.Logger
 }
 
 func (s *SlogAdapter) Log(ctx context.Context, level tracelog.LogLevel, msg string, data map[string]any) {
-	// The zero value is slog.LevelInfo, which also covers levels added by a newer pgx.
-	var slogLevel slog.Level
-
-	switch level {
-	case tracelog.LogLevelTrace, tracelog.LogLevelDebug:
-		slogLevel = slog.LevelDebug
-	case tracelog.LogLevelWarn:
-		slogLevel = slog.LevelWarn
-	case tracelog.LogLevelError:
-		slogLevel = slog.LevelError
-	case tracelog.LogLevelInfo, tracelog.LogLevelNone:
+	slogLevel, ok := pgxToSlogLevel[level]
+	if !ok {
 		slogLevel = slog.LevelInfo
 	}
 
