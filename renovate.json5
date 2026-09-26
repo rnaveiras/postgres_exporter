@@ -3,7 +3,25 @@
   "extends": [
     "github>rnaveiras/.github:renovate.json5",
     "config:best-practices",
-    ":semanticCommits"
+    ":semanticCommits",
+    // Picks up the `# renovate:` annotations on GO_VERSION and
+    // GOLANGCI_LINT_VERSION in .github/workflows/build.yaml.
+    "customManagers:githubActionsVersions"
+  ],
+  "customManagers": [
+    // promu builds release binaries with the Go version in .promu.yml, which
+    // no built-in manager reads.
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.promu\\.yml$/"
+      ],
+      "matchStrings": [
+        "go:\\s+version:\\s+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "go",
+      "datasourceTemplate": "golang-version"
+    }
   ],
   "pre-commit": {
     "enabled": true
@@ -29,6 +47,35 @@
   // single combined rule could not vary the ceiling per service. Adding a
   // major to compose.yaml means adding a rule here too.
   "packageRules": [
+    // The Go toolchain is pinned in mise.toml, go.mod, the build workflow,
+    // .promu.yml and the Dockerfile builder image. Bump them together so
+    // local, CI and release builds never drift apart.
+    {
+      "matchDepNames": [
+        "go",
+        "golang"
+      ],
+      "groupName": "go"
+    },
+    // The go.mod directive is a minimum version, so the default range
+    // strategy would leave it behind; bump it with the rest of the group.
+    {
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchDepTypes": [
+        "golang"
+      ],
+      "rangeStrategy": "bump"
+    },
+    // golangci-lint is pinned in mise.toml and the build workflow.
+    {
+      "matchDepNames": [
+        "golangci-lint",
+        "golangci/golangci-lint"
+      ],
+      "groupName": "golangci-lint"
+    },
     // Upstream rebuilds every supported postgres major at once, so digest-only
     // bumps arrive as one PR per major. Group them into a single PR. Scoped to
     // digests so tag bumps stay one-per-major: those change the tested server
