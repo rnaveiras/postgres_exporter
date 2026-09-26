@@ -16,36 +16,29 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   # true when a push on the main branch
-  PUSH_ARTIFACT: |
-    ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request' }}
-  # renovate: datasource=golang-version depName=go
-  GO_VERSION: "1.27.1"
-  # renovate: datasource=github-releases depName=golangci/golangci-lint
-  GOLANGCI_LINT_VERSION: "v2.13.2"
+  PUSH_ARTIFACT: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+  # The toolchain comes from mise.toml; never download another one, never edit go.mod.
+  GOTOOLCHAIN: local
+  GOFLAGS: -mod=readonly
+  GOWORK: "off"
 
 jobs:
   linters:
     runs-on: ubuntu-latest
     name: linters
-    permissions:
-      contents: read # Required: allow read access to the content for analysis.
-      pull-requests: read # Optional: allow read access to pull request.
-      checks: write # Optional: allow write access to checks to allow the action to annotate code in the PR.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          go-version: ${{ env.GO_VERSION }}
+          install: true
           cache: true
-      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-      - name: Lint Dockerfile
-        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
-        with:
-          dockerfile: "Dockerfile"
+      # Same command as `mise run check` locally; the slow profile adds govulncheck.
+      - name: hk check
+        run: mise exec -- hk check --all
+        env:
+          HK_PROFILE: slow
 
   mod-tidy:
     name: mod-tidy
@@ -55,43 +48,94 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - name: set up go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          go-version: ${{ env.GO_VERSION }}
+          install_args: go
           cache: true
-        id: go
       - name: go mod tidy
-        run: go mod tidy
-      - run: |
-          if ! git diff --exit-code -- go.mod go.sum; then
-            echo "Modules not tidy; please run 'go mod tidy'"
-            exit 1
-          fi;
+        run: go mod tidy -diff
+      - name: go mod verify
+        run: go mod verify
+
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          install_args: go
+          cache: true
+      - run: mise run vet
+      - name: unit tests
+        run: go test -race -shuffle=on -count=1 -timeout 10m -short ./...
+
+  # Integration tests need the private pgfresh module, so they only run where
+  # PGFRESH_TOKEN is available: pushes and PRs from branches in this repository.
+  # Fork PRs show these checks as skipped.
+  integration:
+    name: integration (pg${{ matrix.postgres }})
+    runs-on: ubuntu-latest
+    needs: [mod-tidy, linters]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ["14", "15", "16", "17", "18"]
+        include:
+          - postgres: "19beta4"
+            experimental: true
+    continue-on-error: ${{ matrix.experimental == true }}
+    env:
+      POSTGRES_IMAGE: postgres:${{ matrix.postgres }}-alpine
+      PGFRESH_ID: postgres_exporter-pg${{ matrix.postgres }}
+      PGFRESH_RETRY: "3"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          install_args: go
+          cache: true
+      - name: Configure access to private modules
+        env:
+          PGFRESH_TOKEN: ${{ secrets.PGFRESH_TOKEN }}
+        run: |
+          if [ -z "$PGFRESH_TOKEN" ]; then
+            echo "::warning::PGFRESH_TOKEN is not set; private modules cannot be fetched"
+            exit 0
+          fi
+          echo "::add-mask::$PGFRESH_TOKEN"
+          git config --global \
+            url."https://x-access-token:${PGFRESH_TOKEN}@github.com/rnaveiras/pgfresh".insteadOf \
+            "https://github.com/rnaveiras/pgfresh"
+      - name: go mod download
+        run: go mod download
+      - name: Pull Postgres image
+        run: docker pull "$POSTGRES_IMAGE"
+      - name: integration tests
+        run: go test -race -shuffle=on -count=1 -timeout 10m -tags integration ./...
 
   build:
     name: build
     runs-on: ubuntu-latest
-    needs: [mod-tidy, linters]
+    needs: [mod-tidy, linters, unit]
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: set up go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          go-version: ${{ env.GO_VERSION }}
+          install_args: go go:github.com/prometheus/promu
           cache: true
-        id: go
       - run: go version
-      - name: Promu
-        run: make promu
       - name: Build
-        run: make build
+        run: mise run build
 
   container:
     runs-on: ubuntu-latest
-    needs: [linters, mod-tidy, build]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    needs: [linters, mod-tidy, build, integration]
+    if: >-
+      !cancelled() && needs.build.result == 'success' &&
+      github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     permissions:
       packages: write
       contents: read

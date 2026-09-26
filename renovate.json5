@@ -4,8 +4,7 @@
     "github>rnaveiras/.github:renovate.json5",
     "config:best-practices",
     ":semanticCommits",
-    // Picks up the `# renovate:` annotations on GO_VERSION and
-    // GOLANGCI_LINT_VERSION in .github/workflows/build.yaml.
+    // Picks up `# renovate:` annotations in .github/workflows/*.yaml.
     "customManagers:githubActionsVersions"
   ],
   "customManagers": [
@@ -21,11 +20,43 @@
       ],
       "depNameTemplate": "go",
       "datasourceTemplate": "golang-version"
+    },
+    // hk.pkl amends a versioned package URL that no built-in manager reads.
+    // The hk binary itself is pinned in mise.toml; bump both together.
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^hk\\.pkl$/"
+      ],
+      "matchStrings": [
+        "hk/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/hk@\\d+\\.\\d+\\.\\d+"
+      ],
+      "depNameTemplate": "jdx/hk",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "autoReplaceStringTemplate": "hk/releases/download/v{{{newValue}}}/hk@{{{newValue}}}"
+    },
+    // pitchfork.toml runs the local stack with the same Prometheus and Grafana
+    // images as compose.yaml.
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^pitchfork\\.toml$/"
+      ],
+      "matchStrings": [
+        "(?<depName>quay\\.io/prometheus/prometheus|grafana/grafana):(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "docker"
     }
   ],
-  "pre-commit": {
-    "enabled": true
-  },
+  // pgfresh is a private module used by the integration tests. PGFRESH_TOKEN is
+  // a fine-grained read-only token for that one repository.
+  "hostRules": [
+    {
+      "matchHost": "https://github.com/rnaveiras/pgfresh",
+      "token": "{{ secrets.PGFRESH_TOKEN }}"
+    }
+  ],
   "schedule": [
     "before 9am on Saturday"
   ],
@@ -40,8 +71,8 @@
   "prConcurrentLimit": 10,
   "dependencyDashboard": true,
   // compose.yaml runs one postgres service per supported major as a test
-  // matrix, so no service may cross majors: an unpinned 13 would follow
-  // upstream to 18 and silently drop 13 from coverage. One rule per major is
+  // matrix, so no service may cross majors: an unpinned 14 would follow
+  // upstream to 18 and silently drop 14 from coverage. One rule per major is
   // needed because each pairs matchCurrentVersion (which service it applies
   // to) with a matching allowedVersions (the ceiling for that service) — a
   // single combined rule could not vary the ceiling per service. Adding a
@@ -68,13 +99,30 @@
       ],
       "rangeStrategy": "bump"
     },
-    // golangci-lint is pinned in mise.toml and the build workflow.
+    // golangci-lint is pinned in mise.toml.
     {
       "matchDepNames": [
         "golangci-lint",
         "golangci/golangci-lint"
       ],
       "groupName": "golangci-lint"
+    },
+    // hk is pinned in mise.toml and in the hk.pkl package URL.
+    {
+      "matchDepNames": [
+        "hk",
+        "jdx/hk"
+      ],
+      "groupName": "hk"
+    },
+    // Prometheus is pinned in mise.toml (promtool), compose.yaml and pitchfork.toml.
+    {
+      "matchDepNames": [
+        "aqua:prometheus/prometheus",
+        "prometheus/prometheus",
+        "quay.io/prometheus/prometheus"
+      ],
+      "groupName": "prometheus"
     },
     // Upstream rebuilds every supported postgres major at once, so digest-only
     // bumps arrive as one PR per major. Group them into a single PR. Scoped to
@@ -94,19 +142,6 @@
         "digest"
       ],
       "groupName": "postgres docker digests"
-    },
-    {
-      "matchManagers": [
-        "docker-compose"
-      ],
-      "matchDatasources": [
-        "docker"
-      ],
-      "matchPackageNames": [
-        "postgres"
-      ],
-      "matchCurrentVersion": "/^13\\./",
-      "allowedVersions": "/^13\\./"
     },
     {
       "matchManagers": [
@@ -172,6 +207,20 @@
       ],
       "matchCurrentVersion": "/^18\\./",
       "allowedVersions": "/^18\\./"
+    },
+    // Takes effect once 19 is GA and the compose tag becomes 19.x.
+    {
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchCurrentVersion": "/^19\\./",
+      "allowedVersions": "/^19\\./"
     }
   ]
 }

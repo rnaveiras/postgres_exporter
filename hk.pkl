@@ -1,0 +1,62 @@
+// Git hooks and the shared `hk check` / `hk fix` step set.
+// Tools are resolved through mise: run `hk install --mise` once after `mise install`.
+amends "package://github.com/jdx/hk/releases/download/v2.2.0/hk@2.2.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.2.0/hk@2.2.0#/Builtins.pkl"
+
+// Fast hygiene and formatting steps. Run on every commit.
+local hygiene = new Mapping<String, Step> {
+  ["trailing-whitespace"] = Builtins.trailing_whitespace
+  ["newlines"] = Builtins.newlines
+  ["merge-conflict"] = Builtins.check_merge_conflict
+  ["private-key"] = Builtins.detect_private_key
+  ["large-files"] = Builtins.check_added_large_files
+  ["gitleaks"] = Builtins.gitleaks
+  ["yamllint"] = Builtins.yamllint
+  ["actionlint"] = Builtins.actionlint
+  ["hadolint"] = Builtins.hadolint
+  ["shellcheck"] = Builtins.shellcheck
+  ["pkl"] = Builtins.pkl
+  ["renovate-config"] {
+    glob = List("renovate.json5")
+    // renovate-config-validator comes from the `npm:renovate` pin in mise.toml. With no file argument it
+    // validates renovate.json5 as repository config, which is what Renovate reads.
+    check = "renovate-config-validator --strict"
+  }
+}
+
+// Go steps. golangci-lint runs gofumpt, goimports and golines as formatters (see .golangci.yaml), so it is
+// the only Go formatter/linter step; `go vet` is covered by its govet linter.
+local golang = new Mapping<String, Step> {
+  ["golangci-config-verify"] {
+    glob = List(".golangci.yaml")
+    check = "golangci-lint config verify"
+  }
+  ["golangci-lint"] = (Builtins.golangci_lint) {
+    depends = List("golangci-config-verify")
+  }
+  ["go-fix"] = Builtins.go_fix
+  ["go-mod-tidy"] = Builtins.gomod_tidy
+}
+
+// Slow steps that need network or minutes. Only in pre-push and `hk check --all` (HK_PROFILE=slow).
+local slow = new Mapping<String, Step> {
+  ["govulncheck"] = (Builtins.go_vuln_check) { profiles = List("slow") }
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps { ...hygiene; ...golang }
+  }
+  ["pre-push"] {
+    steps { ...golang; ...slow }
+  }
+  ["check"] {
+    steps { ...hygiene; ...golang; ...slow }
+  }
+  ["fix"] {
+    fix = true
+    steps { ...hygiene; ...golang }
+  }
+}

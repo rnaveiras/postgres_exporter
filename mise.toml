@@ -1,7 +1,117 @@
+# Tool versions and developer entry points. Renovate keeps the versions moving.
 [tools]
 go = "1.27.1"
 golangci-lint = "2.13.2"
-pre-commit = "4.6.2"
+hk = "2.2.0"
+pkl = "0.32.1"
+pitchfork = "2.27.0"
+actionlint = "1.7.12"
+hadolint = "2.15.1"
+gitleaks = "8.30.1"
+shellcheck = "0.11.0"
+# yamllint is a pypi package; mise installs it through uv.
+uv = "0.12.19"
+yamllint = "1.38.0"
+# Provides both the prometheus and promtool binaries. Shares the version pin with the Prometheus image.
+"aqua:prometheus/prometheus" = "3.13.1"
+"go:github.com/prometheus/promu" = "0.17.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
+# Provides renovate-config-validator for the hk `renovate-config` step (the npm backend needs node).
+node = "24.21.0"
+"npm:renovate" = "44.115.7"
 
 [env]
-COMPOSE_PROFILES = 'default,postgres13'
+# pgfresh is a private module. The token itself is never stored here; see CONTRIBUTING.md.
+GOPRIVATE = "github.com/rnaveiras/pgfresh"
+GONOSUMDB = "github.com/rnaveiras/pgfresh"
+# The toolchain that lints is the toolchain that builds: a go.mod/mise mismatch is an error.
+GOTOOLCHAIN = "local"
+# Kept for people who still use compose directly.
+COMPOSE_PROFILES = "default,postgres18"
+
+# ---- Lint ------------------------------------------------------------------------------------------
+
+[tasks.check]
+description = "Run every linter on all tracked files (same as CI)"
+run = "hk check --all"
+
+[tasks.fix]
+description = "Run every fixer on modified files"
+run = "hk fix"
+
+[tasks.lint]
+description = "golangci-lint only (fast Go path; `check` is the full hk run)"
+run = "golangci-lint run ./..."
+
+[tasks."lint:fix"]
+description = "Apply golangci-lint fixes and formatters"
+run = ["golangci-lint run --fix ./...", "golangci-lint fmt ./..."]
+
+[tasks.modernize]
+description = "Apply the go fix modernizers"
+run = "go fix ./..."
+
+[tasks.vet]
+description = "go vet with every build tag"
+run = "go vet -tags integration,acceptance ./..."
+
+# ---- Test ------------------------------------------------------------------------------------------
+
+[tasks.test]
+description = "Unit tests with the race detector and shuffled order"
+run = "go test -race -shuffle=on -short ./..."
+
+[tasks."test:integration"]
+description = "Integration tests against one Postgres major (POSTGRES_MAJOR=18 by default)"
+env = { POSTGRES_MAJOR = "{{env.POSTGRES_MAJOR | default(value='18')}}" }
+run = """
+export POSTGRES_IMAGE="postgres:${POSTGRES_MAJOR}-alpine"
+export PGFRESH_ID="postgres_exporter-pg${POSTGRES_MAJOR}"
+go test -race -shuffle=on -count=1 -tags integration ./...
+"""
+
+[tasks."test:matrix"]
+description = "Integration tests against every supported major, sequentially"
+run = """
+for v in 14 15 16 17 18; do
+  echo ">> PG${v}"
+  POSTGRES_MAJOR=$v mise run test:integration || exit 1
+done
+"""
+
+# ---- Build -----------------------------------------------------------------------------------------
+
+[tasks.build]
+description = "Build the binary with promu into .build/"
+run = "promu build --prefix .build"
+
+[tasks.tarball]
+description = "Build the release tarball with promu into .build/"
+depends = ["build"]
+run = "promu tarball --prefix .build .build"
+
+[tasks.docker]
+description = "Build the container image (DOCKER_IMAGE_NAME, DOCKER_IMAGE_TAG)"
+run = '''
+docker build -t "${DOCKER_IMAGE_NAME:-postgres-exporter}:${DOCKER_IMAGE_TAG:-$(git rev-parse --abbrev-ref HEAD | tr / -)}" .
+'''
+
+# ---- Local stack (pitchfork) -----------------------------------------------------------------------
+
+# PGEXP_PG picks the Postgres the exporter scrapes: 14..18 or 19beta (default 18). It is read from the
+# shell rather than [env] so `PGEXP_PG=16 mise run stack:up` works without editing a file.
+[tasks."stack:up"]
+description = "Start Postgres (PGEXP_PG, default 18), seed, exporter, Prometheus and Grafana under pitchfork"
+run = 'pitchfork start "exporter-pg${PGEXP_PG:-18}" prometheus grafana'
+
+[tasks."stack:down"]
+description = "Stop every pitchfork daemon of this project"
+run = "pitchfork stop --group all"
+
+[tasks."stack:matrix"]
+description = "Start Postgres 14-18 side by side on ports 5414-5418"
+run = "pitchfork start --group matrix"
+
+[tasks."stack:beta"]
+description = "Start the Postgres 19 beta on port 5419"
+run = "pitchfork start --group beta"

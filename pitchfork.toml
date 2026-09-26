@@ -1,0 +1,193 @@
+#:schema https://pitchfork.jdx.dev/schema.json
+# Local development stack. `mise run stack:up` starts it; see CONTRIBUTING.md.
+# Every Postgres major gets its own host port (54<major>) so several can run side by side.
+namespace = "pgexp"
+
+[env]
+PGUSER = "postgres"
+PGPASSWORD = "postgres"
+
+# ---- PG14 ----------------------------------------------------------------------------------------
+
+[daemons.pg14]
+run = "exec docker run --rm --name pgexp-pg14 -p 5414:5432 -e POSTGRES_PASSWORD=$PGPASSWORD -v $PWD/docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro postgres:14-alpine postgres -c config_file=/etc/postgresql/postgresql.conf -c shared_preload_libraries=pg_stat_statements"
+ready_cmd = "docker exec pgexp-pg14 pg_isready -h 127.0.0.1 -U postgres"
+stop_signal = { signal = "SIGTERM", timeout = "20s" }
+hooks = { on_exit = "docker rm -f pgexp-pg14 >/dev/null 2>&1 || true" }
+
+# Creates the monitoring role and pg_stat_statements. Idempotent, reruns on every start.
+[daemons.seed-pg14]
+run = "docker exec -i pgexp-pg14 psql -U postgres -v ON_ERROR_STOP=1 < docker/sql/monitoring-role.sql"
+oneshot = true
+depends = ["pg14"]
+
+# Exporter from source, connected as the least-privilege role. Restarts on Go changes.
+[daemons.exporter-pg14]
+run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+mise = true
+depends = ["seed-pg14"]
+watch = ["**/*.go", "go.mod", "go.sum"]
+port = 9187
+ready_http = "http://127.0.0.1:9187/metrics"
+stop_signal = { signal = "SIGINT", timeout = "10s" }
+env = { PGHOST = "127.0.0.1", PGPORT = "5414", PGUSER = "postgres_exporter", PGPASSWORD = "postgres_exporter", PGDATABASE = "postgres", PGSSLMODE = "disable" }
+
+# ---- PG15 ----------------------------------------------------------------------------------------
+
+[daemons.pg15]
+run = "exec docker run --rm --name pgexp-pg15 -p 5415:5432 -e POSTGRES_PASSWORD=$PGPASSWORD -v $PWD/docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro postgres:15-alpine postgres -c config_file=/etc/postgresql/postgresql.conf -c shared_preload_libraries=pg_stat_statements"
+ready_cmd = "docker exec pgexp-pg15 pg_isready -h 127.0.0.1 -U postgres"
+stop_signal = { signal = "SIGTERM", timeout = "20s" }
+hooks = { on_exit = "docker rm -f pgexp-pg15 >/dev/null 2>&1 || true" }
+
+# Creates the monitoring role and pg_stat_statements. Idempotent, reruns on every start.
+[daemons.seed-pg15]
+run = "docker exec -i pgexp-pg15 psql -U postgres -v ON_ERROR_STOP=1 < docker/sql/monitoring-role.sql"
+oneshot = true
+depends = ["pg15"]
+
+# Exporter from source, connected as the least-privilege role. Restarts on Go changes.
+[daemons.exporter-pg15]
+run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+mise = true
+depends = ["seed-pg15"]
+watch = ["**/*.go", "go.mod", "go.sum"]
+port = 9187
+ready_http = "http://127.0.0.1:9187/metrics"
+stop_signal = { signal = "SIGINT", timeout = "10s" }
+env = { PGHOST = "127.0.0.1", PGPORT = "5415", PGUSER = "postgres_exporter", PGPASSWORD = "postgres_exporter", PGDATABASE = "postgres", PGSSLMODE = "disable" }
+
+# ---- PG16 ----------------------------------------------------------------------------------------
+
+[daemons.pg16]
+run = "exec docker run --rm --name pgexp-pg16 -p 5416:5432 -e POSTGRES_PASSWORD=$PGPASSWORD -v $PWD/docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro postgres:16-alpine postgres -c config_file=/etc/postgresql/postgresql.conf -c shared_preload_libraries=pg_stat_statements"
+ready_cmd = "docker exec pgexp-pg16 pg_isready -h 127.0.0.1 -U postgres"
+stop_signal = { signal = "SIGTERM", timeout = "20s" }
+hooks = { on_exit = "docker rm -f pgexp-pg16 >/dev/null 2>&1 || true" }
+
+# Creates the monitoring role and pg_stat_statements. Idempotent, reruns on every start.
+[daemons.seed-pg16]
+run = "docker exec -i pgexp-pg16 psql -U postgres -v ON_ERROR_STOP=1 < docker/sql/monitoring-role.sql"
+oneshot = true
+depends = ["pg16"]
+
+# Exporter from source, connected as the least-privilege role. Restarts on Go changes.
+[daemons.exporter-pg16]
+run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+mise = true
+depends = ["seed-pg16"]
+watch = ["**/*.go", "go.mod", "go.sum"]
+port = 9187
+ready_http = "http://127.0.0.1:9187/metrics"
+stop_signal = { signal = "SIGINT", timeout = "10s" }
+env = { PGHOST = "127.0.0.1", PGPORT = "5416", PGUSER = "postgres_exporter", PGPASSWORD = "postgres_exporter", PGDATABASE = "postgres", PGSSLMODE = "disable" }
+
+# ---- PG17 ----------------------------------------------------------------------------------------
+
+[daemons.pg17]
+run = "exec docker run --rm --name pgexp-pg17 -p 5417:5432 -e POSTGRES_PASSWORD=$PGPASSWORD -v $PWD/docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro postgres:17-alpine postgres -c config_file=/etc/postgresql/postgresql.conf -c shared_preload_libraries=pg_stat_statements"
+ready_cmd = "docker exec pgexp-pg17 pg_isready -h 127.0.0.1 -U postgres"
+stop_signal = { signal = "SIGTERM", timeout = "20s" }
+hooks = { on_exit = "docker rm -f pgexp-pg17 >/dev/null 2>&1 || true" }
+
+# Creates the monitoring role and pg_stat_statements. Idempotent, reruns on every start.
+[daemons.seed-pg17]
+run = "docker exec -i pgexp-pg17 psql -U postgres -v ON_ERROR_STOP=1 < docker/sql/monitoring-role.sql"
+oneshot = true
+depends = ["pg17"]
+
+# Exporter from source, connected as the least-privilege role. Restarts on Go changes.
+[daemons.exporter-pg17]
+run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+mise = true
+depends = ["seed-pg17"]
+watch = ["**/*.go", "go.mod", "go.sum"]
+port = 9187
+ready_http = "http://127.0.0.1:9187/metrics"
+stop_signal = { signal = "SIGINT", timeout = "10s" }
+env = { PGHOST = "127.0.0.1", PGPORT = "5417", PGUSER = "postgres_exporter", PGPASSWORD = "postgres_exporter", PGDATABASE = "postgres", PGSSLMODE = "disable" }
+
+# ---- PG18 ----------------------------------------------------------------------------------------
+
+[daemons.pg18]
+run = "exec docker run --rm --name pgexp-pg18 -p 5418:5432 -e POSTGRES_PASSWORD=$PGPASSWORD -v $PWD/docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro postgres:18-alpine postgres -c config_file=/etc/postgresql/postgresql.conf -c shared_preload_libraries=pg_stat_statements"
+ready_cmd = "docker exec pgexp-pg18 pg_isready -h 127.0.0.1 -U postgres"
+stop_signal = { signal = "SIGTERM", timeout = "20s" }
+hooks = { on_exit = "docker rm -f pgexp-pg18 >/dev/null 2>&1 || true" }
+
+# Creates the monitoring role and pg_stat_statements. Idempotent, reruns on every start.
+[daemons.seed-pg18]
+run = "docker exec -i pgexp-pg18 psql -U postgres -v ON_ERROR_STOP=1 < docker/sql/monitoring-role.sql"
+oneshot = true
+depends = ["pg18"]
+
+# Exporter from source, connected as the least-privilege role. Restarts on Go changes.
+[daemons.exporter-pg18]
+run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+mise = true
+depends = ["seed-pg18"]
+watch = ["**/*.go", "go.mod", "go.sum"]
+port = 9187
+ready_http = "http://127.0.0.1:9187/metrics"
+stop_signal = { signal = "SIGINT", timeout = "10s" }
+env = { PGHOST = "127.0.0.1", PGPORT = "5418", PGUSER = "postgres_exporter", PGPASSWORD = "postgres_exporter", PGDATABASE = "postgres", PGSSLMODE = "disable" }
+
+# ---- PG19beta ----------------------------------------------------------------------------------------
+
+[daemons.pg19beta]
+run = "exec docker run --rm --name pgexp-pg19beta -p 5419:5432 -e POSTGRES_PASSWORD=$PGPASSWORD -v $PWD/docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro postgres:19beta4-alpine postgres -c config_file=/etc/postgresql/postgresql.conf -c shared_preload_libraries=pg_stat_statements"
+ready_cmd = "docker exec pgexp-pg19beta pg_isready -h 127.0.0.1 -U postgres"
+stop_signal = { signal = "SIGTERM", timeout = "20s" }
+hooks = { on_exit = "docker rm -f pgexp-pg19beta >/dev/null 2>&1 || true" }
+
+# Creates the monitoring role and pg_stat_statements. Idempotent, reruns on every start.
+[daemons.seed-pg19beta]
+run = "docker exec -i pgexp-pg19beta psql -U postgres -v ON_ERROR_STOP=1 < docker/sql/monitoring-role.sql"
+oneshot = true
+depends = ["pg19beta"]
+
+# Exporter from source, connected as the least-privilege role. Restarts on Go changes.
+[daemons.exporter-pg19beta]
+run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+mise = true
+depends = ["seed-pg19beta"]
+watch = ["**/*.go", "go.mod", "go.sum"]
+port = 9187
+ready_http = "http://127.0.0.1:9187/metrics"
+stop_signal = { signal = "SIGINT", timeout = "10s" }
+env = { PGHOST = "127.0.0.1", PGPORT = "5419", PGUSER = "postgres_exporter", PGPASSWORD = "postgres_exporter", PGDATABASE = "postgres", PGSSLMODE = "disable" }
+
+# ---- Prometheus + Grafana ------------------------------------------------------------------------
+# Host networking: Prometheus scrapes the exporter on 127.0.0.1:9187 whichever major it points at.
+
+[daemons.prometheus]
+run = "exec docker run --rm --name pgexp-prometheus --network host -v $PWD/docker/prometheus.local.yml:/etc/prometheus/prometheus.yml:ro quay.io/prometheus/prometheus:v3.13.1"
+ready_http = "http://127.0.0.1:9090/-/ready"
+stop_signal = { signal = "SIGTERM", timeout = "10s" }
+hooks = { on_exit = "docker rm -f pgexp-prometheus >/dev/null 2>&1 || true" }
+
+[daemons.grafana]
+run = "exec docker run --rm --name pgexp-grafana --network host -e GF_SECURITY_ADMIN_USER=admin -e GF_SECURITY_ADMIN_PASSWORD=admin -e GF_USERS_ALLOW_SIGN_UP=false -e PROMETHEUS_URL=http://127.0.0.1:9090 -v $PWD/docker/grafana/provisioning:/etc/grafana/provisioning:ro -v $PWD/docker/grafana/dashboards:/etc/grafana/dashboards:ro grafana/grafana:13.2.2"
+depends = ["prometheus"]
+ready_http = "http://127.0.0.1:3000/api/health"
+stop_signal = { signal = "SIGTERM", timeout = "10s" }
+hooks = { on_exit = "docker rm -f pgexp-grafana >/dev/null 2>&1 || true" }
+
+# ---- Groups --------------------------------------------------------------------------------------
+
+[groups.default]
+daemons = ["pg18", "seed-pg18", "exporter-pg18", "prometheus", "grafana"]
+
+[groups.matrix]
+daemons = ["seed-pg14", "seed-pg15", "seed-pg16", "seed-pg17", "seed-pg18"]
+
+[groups.beta]
+daemons = ["seed-pg19beta"]
+
+[groups.all]
+daemons = [
+  "pg14", "pg15", "pg16", "pg17", "pg18", "pg19beta",
+  "seed-pg14", "seed-pg15", "seed-pg16", "seed-pg17", "seed-pg18", "seed-pg19beta",
+  "exporter-pg14", "exporter-pg15", "exporter-pg16", "exporter-pg17", "exporter-pg18", "exporter-pg19beta",
+  "prometheus", "grafana",
+]

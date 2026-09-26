@@ -1,3 +1,6 @@
+---
+# Prometheus config for the pitchfork stack (host networking, see pitchfork.toml).
+# docker/prometheus.yml is the compose equivalent with service-name targets.
 global:
   scrape_interval: 10s
   scrape_timeout: 10s
@@ -9,7 +12,7 @@ global:
 scrape_configs:
   - job_name: "prometheus"
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ["127.0.0.1:9090"]
   - job_name: "postgres"
     static_configs:
-      - targets: ["postgres-exporter:9187"]
+      - targets: ["127.0.0.1:9187"]

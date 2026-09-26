@@ -2,6 +2,6 @@
 /debug*
 .build/
 .data/
-docker-compose.yaml
 dist/
-docker/
+hk.local.pkl
+pitchfork.local.toml
