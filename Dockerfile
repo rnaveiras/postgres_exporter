@@ -26,6 +26,6 @@ LABEL org.opencontainers.image.authors="Raul Naveiras <rnaveiras@gmail.com>"
 
 COPY --from=builder /go/src/app/output/postgres_exporter /bin/postgres_exporter
 
-USER nobody
+USER 65534:65534
 EXPOSE 9187
 ENTRYPOINT [ "/bin/postgres_exporter" ]
