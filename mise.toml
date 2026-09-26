@@ -47,6 +47,11 @@ run = "hk fix"
 description = "golangci-lint only (fast Go path; `check` is the full hk run)"
 run = "golangci-lint run ./..."
 
+[tasks."lint:integration"]
+description = "golangci-lint on the integration test module (needs access to the private pgfresh module)"
+dir = "integration"
+run = "golangci-lint run ./..."
+
 [tasks."lint:fix"]
 description = "Apply golangci-lint fixes and formatters"
 run = ["golangci-lint run --fix ./...", "golangci-lint fmt ./..."]
@@ -66,12 +71,23 @@ description = "Unit tests with the race detector and shuffled order"
 run = "go test -race -shuffle=on -short ./..."
 
 [tasks."test:integration"]
-description = "Integration tests against one Postgres major (POSTGRES_MAJOR=18 by default)"
-env = { POSTGRES_MAJOR = "{{env.POSTGRES_MAJOR | default(value='18')}}" }
+description = "Integration tests against one Postgres major (POSTGRES_MAJOR, default 18), or the server in PGFRESH_URL"
+dir = "integration"
 run = """
-export POSTGRES_IMAGE="postgres:${POSTGRES_MAJOR}-alpine"
-export PGFRESH_ID="postgres_exporter-pg${POSTGRES_MAJOR}"
-go test -race -shuffle=on -count=1 -tags integration ./...
+major="${POSTGRES_MAJOR:-18}"
+export POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres:${major}-alpine}"
+export PGFRESH_ID="${PGFRESH_ID:-postgres_exporter-pg${major}}"
+go test -race -shuffle=on -count=1 ./...
+"""
+
+[tasks."test:golden-update"]
+description = "Rewrite integration/testdata/metrics_pg<major>.golden for POSTGRES_MAJOR (default 18)"
+dir = "integration"
+run = """
+major="${POSTGRES_MAJOR:-18}"
+export POSTGRES_IMAGE="${POSTGRES_IMAGE:-postgres:${major}-alpine}"
+export PGFRESH_ID="${PGFRESH_ID:-postgres_exporter-pg${major}}"
+go test -count=1 -run TestGolden ./... -update
 """
 
 [tasks."test:matrix"]

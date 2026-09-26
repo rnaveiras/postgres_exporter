@@ -19,11 +19,13 @@ On git 2.54+ you can instead run `hk install --global --mise` once per machine.
 | `mise run check` | Every linter on all files. CI runs exactly this. |
 | `mise run fix` | Every fixer on modified files. |
 | `mise run lint` | golangci-lint only. |
+| `mise run lint:integration` | golangci-lint on the integration test module. |
 | `mise run lint:fix` | golangci-lint fixes and formatters. |
 | `mise run modernize` | Apply the `go fix` modernizers. |
 | `mise run test` | Unit tests with `-race -shuffle=on`. |
 | `mise run test:integration` | Integration tests against one Postgres major (`POSTGRES_MAJOR`, default 18). |
 | `mise run test:matrix` | Integration tests against 14 to 18 in turn. |
+| `mise run test:golden-update` | Rewrite the golden file for `POSTGRES_MAJOR` after a deliberate metric change. |
 | `mise run build` | Build the binary into `.build/` with promu. |
 | `mise run tarball` | Build the release tarball into `.build/`. |
 | `mise run docker` | Build the container image. |
@@ -83,6 +85,32 @@ listens on its own host port, so profiles can be combined:
 ```sh
 docker compose --profile default --profile postgres18 up -d
 ```
+
+## Integration tests
+
+The integration tests live in `integration/`, a separate Go module, because they depend on a private module
+(see below). They run the exporter as the least-privilege `postgres_exporter` role, created from
+`docker/sql/monitoring-role.sql`, against a real Postgres, one major per run:
+
+```sh
+mise run test:integration                      # PostgreSQL 18 in a container
+POSTGRES_MAJOR=15 mise run test:integration    # another major
+```
+
+Without Docker, point them at a Postgres you can reach as a superuser. The tests create and drop their own
+databases, but they create or reset the cluster-wide `postgres_exporter` role from
+`docker/sql/monitoring-role.sql` (a known password, a connection limit and read-only defaults) and leave it in
+place. Never point them at a server whose `postgres_exporter` role is in real use:
+
+```sh
+PGFRESH_URL='postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable' mise run test:integration
+```
+
+`integration/testdata/metrics_pg<major>.golden` records the metric names and label names each major exposes.
+When a change adds, removes or renames a metric, rewrite them with `mise run test:golden-update` for every major
+and review the diff.
+
+Changing a flag or a metric name also needs a line in the `## unreleased` section of `CHANGELOG.md`.
 
 ## Private test dependency
 

@@ -14,6 +14,9 @@ issues:
   # golangci-lint stops at 50 issues per linter and 3 identical messages by default; CI must see everything.
   max-issues-per-linter: 0
   max-same-issues: 0
+  # Deduplicating by line runs before exclusions: an excluded finding could hide another linter's finding on
+  # the same line, and which one survives varied between machines.
+  uniq-by-line: false
 
 linters:
   default: none
@@ -314,6 +317,11 @@ linters:
       - path: (^|/)main_test\.go$
         linters: [forbidigo]
         text: context\.Background
+      # The integration module tests the exporter in this repository (local replace) and maps pgfresh's
+      # untagged v0.0.0 requirement to a published commit.
+      - path: go\.mod$
+        linters: [gomoddirectives]
+        text: 'replacement are not allowed: github\.com/rnaveiras/(postgres_exporter|pgfresh)$'
       # tests: relax size/complexity and magic numbers, keep everything else
       - path: _test\.go$
         linters: [mnd, goconst, funlen, gocyclo, nestif, gosec, containedctx, forbidigo]

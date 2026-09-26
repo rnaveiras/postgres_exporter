@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          install_args: go
+          install_args: go golangci-lint
           cache: true
       - name: Configure access to private modules
         env:
@@ -110,12 +110,23 @@ jobs:
           git config --global \
             url."https://x-access-token:${PGFRESH_TOKEN}@github.com/rnaveiras/pgfresh".insteadOf \
             "https://github.com/rnaveiras/pgfresh"
+      # The integration tests are their own Go module so the private pgfresh dependency stays out of the
+      # exporter's go.mod.
       - name: go mod download
+        working-directory: integration
         run: go mod download
+      - name: lint the integration module
+        if: matrix.postgres == '18'
+        run: mise run lint:integration
+      - name: integration module go.mod is tidy
+        if: matrix.postgres == '18'
+        working-directory: integration
+        run: go mod tidy -diff
       - name: Pull Postgres image
         run: docker pull "$POSTGRES_IMAGE"
       - name: integration tests
-        run: go test -race -shuffle=on -count=1 -timeout 10m -tags integration ./...
+        working-directory: integration
+        run: go test -race -shuffle=on -count=1 -timeout 10m ./...
 
   build:
     name: build

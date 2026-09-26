@@ -1,0 +1,166 @@
+# TYPE postgres_config_last_load_time_seconds gauge
+# TYPE postgres_disk_usage_index_bytes gauge
+# TYPE postgres_disk_usage_table_bytes gauge
+# TYPE postgres_exporter_scraper_duration_seconds gauge
+# TYPE postgres_exporter_scraper_success gauge
+# TYPE postgres_exporter_unsupported_version gauge
+# TYPE postgres_exporter_untested_version gauge
+# TYPE postgres_info gauge
+# TYPE postgres_is_in_recovery gauge
+# TYPE postgres_locks_table gauge
+# TYPE postgres_start_time_seconds gauge
+# TYPE postgres_stat_activity_connections gauge
+# TYPE postgres_stat_activity_oldest_backend_timestamp gauge
+# TYPE postgres_stat_activity_oldest_backend_xmin gauge
+# TYPE postgres_stat_activity_oldest_query_active_seconds gauge
+# TYPE postgres_stat_activity_oldest_snapshot_seconds gauge
+# TYPE postgres_stat_activity_oldest_xact_seconds gauge
+# TYPE postgres_stat_archiver_archived_total counter
+# TYPE postgres_stat_archiver_failed_total counter
+# TYPE postgres_stat_bgwriter_buffers_alloc_total counter
+# TYPE postgres_stat_bgwriter_buffers_backend_fsync_total counter
+# TYPE postgres_stat_bgwriter_buffers_backend_total counter
+# TYPE postgres_stat_bgwriter_buffers_checkpoint_total counter
+# TYPE postgres_stat_bgwriter_buffers_clean_total counter
+# TYPE postgres_stat_bgwriter_checkpoint_sync_time_seconds_total counter
+# TYPE postgres_stat_bgwriter_checkpoint_write_time_seconds_total counter
+# TYPE postgres_stat_bgwriter_checkpoints_req_total counter
+# TYPE postgres_stat_bgwriter_checkpoints_timed_total counter
+# TYPE postgres_stat_bgwriter_maxwritten_clean_total counter
+# TYPE postgres_stat_database_blks_hit_total counter
+# TYPE postgres_stat_database_blks_read_total counter
+# TYPE postgres_stat_database_conflicts_total counter
+# TYPE postgres_stat_database_deadlocks_total counter
+# TYPE postgres_stat_database_numbackends gauge
+# TYPE postgres_stat_database_temp_bytes_total counter
+# TYPE postgres_stat_database_temp_files_total counter
+# TYPE postgres_stat_database_tup_deleted_total counter
+# TYPE postgres_stat_database_tup_fetched_total counter
+# TYPE postgres_stat_database_tup_inserted_total counter
+# TYPE postgres_stat_database_tup_returned_total counter
+# TYPE postgres_stat_database_tup_updated_total counter
+# TYPE postgres_stat_database_xact_commit_total counter
+# TYPE postgres_stat_database_xact_rollback_total counter
+# TYPE postgres_stat_user_indexes_scan_total counter
+# TYPE postgres_stat_user_indexes_tuple_fetch_total counter
+# TYPE postgres_stat_user_indexes_tuple_read_total counter
+# TYPE postgres_stat_user_tables_analyze_total counter
+# TYPE postgres_stat_user_tables_autoanalyze_total counter
+# TYPE postgres_stat_user_tables_autovacuum_total counter
+# TYPE postgres_stat_user_tables_idx_scan_total counter
+# TYPE postgres_stat_user_tables_idx_tup_fetch_total counter
+# TYPE postgres_stat_user_tables_last_analyze_timestamp gauge
+# TYPE postgres_stat_user_tables_last_autoanalyze_timestamp gauge
+# TYPE postgres_stat_user_tables_last_autovacuum_timestamp gauge
+# TYPE postgres_stat_user_tables_last_vacuum_timestamp gauge
+# TYPE postgres_stat_user_tables_n_dead_tup gauge
+# TYPE postgres_stat_user_tables_n_live_tup gauge
+# TYPE postgres_stat_user_tables_n_mod_since_analyze gauge
+# TYPE postgres_stat_user_tables_n_tup_del_total counter
+# TYPE postgres_stat_user_tables_n_tup_hot_upd counter
+# TYPE postgres_stat_user_tables_n_tup_hot_upd_total counter
+# TYPE postgres_stat_user_tables_n_tup_ins_total counter
+# TYPE postgres_stat_user_tables_n_tup_upd_total counter
+# TYPE postgres_stat_user_tables_seq_scan_total counter
+# TYPE postgres_stat_user_tables_seq_tup_read_total counter
+# TYPE postgres_stat_user_tables_vacuum_total counter
+# TYPE postgres_up gauge
+postgres_config_last_load_time_seconds{}
+postgres_disk_usage_index_bytes{datname,indexname,schemaname,tablename}
+postgres_disk_usage_table_bytes{datname,schemaname,tablename}
+postgres_exporter_scraper_duration_seconds{datname,scraper="DiskUsageScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="InfoScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="LocksScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="StatActivityScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="StatArchiverScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="StatBgwriterScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="StatCheckpointerScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="StatDatabaseScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="StatReplicationScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="StatUserIndexesScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="StatUserTablesScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="StatVacuumProgressScraper"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="connect"}
+postgres_exporter_scraper_duration_seconds{datname,scraper="list_databases"}
+postgres_exporter_scraper_success{datname,scraper="DiskUsageScraper"}
+postgres_exporter_scraper_success{datname,scraper="InfoScraper"}
+postgres_exporter_scraper_success{datname,scraper="LocksScraper"}
+postgres_exporter_scraper_success{datname,scraper="StatActivityScraper"}
+postgres_exporter_scraper_success{datname,scraper="StatArchiverScraper"}
+postgres_exporter_scraper_success{datname,scraper="StatBgwriterScraper"}
+postgres_exporter_scraper_success{datname,scraper="StatCheckpointerScraper"}
+postgres_exporter_scraper_success{datname,scraper="StatDatabaseScraper"}
+postgres_exporter_scraper_success{datname,scraper="StatReplicationScraper"}
+postgres_exporter_scraper_success{datname,scraper="StatUserIndexesScraper"}
+postgres_exporter_scraper_success{datname,scraper="StatUserTablesScraper"}
+postgres_exporter_scraper_success{datname,scraper="StatVacuumProgressScraper"}
+postgres_exporter_scraper_success{datname,scraper="connect"}
+postgres_exporter_scraper_success{datname,scraper="list_databases"}
+postgres_exporter_unsupported_version{}
+postgres_exporter_untested_version{}
+postgres_info{platform,version,version_num}
+postgres_is_in_recovery{}
+postgres_locks_table{datname,granted,locktype,mode}
+postgres_start_time_seconds{}
+postgres_stat_activity_connections{datname,state="active"}
+postgres_stat_activity_connections{datname,state="disabled"}
+postgres_stat_activity_connections{datname,state="fastpath function call"}
+postgres_stat_activity_connections{datname,state="idle in transaction (aborted)"}
+postgres_stat_activity_connections{datname,state="idle in transaction"}
+postgres_stat_activity_connections{datname,state="idle"}
+postgres_stat_activity_connections{datname,state="starting"}
+postgres_stat_activity_oldest_backend_timestamp{}
+postgres_stat_activity_oldest_backend_xmin{}
+postgres_stat_activity_oldest_query_active_seconds{}
+postgres_stat_activity_oldest_snapshot_seconds{}
+postgres_stat_activity_oldest_xact_seconds{}
+postgres_stat_archiver_archived_total{}
+postgres_stat_archiver_failed_total{}
+postgres_stat_bgwriter_buffers_alloc_total{}
+postgres_stat_bgwriter_buffers_backend_fsync_total{}
+postgres_stat_bgwriter_buffers_backend_total{}
+postgres_stat_bgwriter_buffers_checkpoint_total{}
+postgres_stat_bgwriter_buffers_clean_total{}
+postgres_stat_bgwriter_checkpoint_sync_time_seconds_total{}
+postgres_stat_bgwriter_checkpoint_write_time_seconds_total{}
+postgres_stat_bgwriter_checkpoints_req_total{}
+postgres_stat_bgwriter_checkpoints_timed_total{}
+postgres_stat_bgwriter_maxwritten_clean_total{}
+postgres_stat_database_blks_hit_total{datname}
+postgres_stat_database_blks_read_total{datname}
+postgres_stat_database_conflicts_total{datname}
+postgres_stat_database_deadlocks_total{datname}
+postgres_stat_database_numbackends{datname}
+postgres_stat_database_temp_bytes_total{datname}
+postgres_stat_database_temp_files_total{datname}
+postgres_stat_database_tup_deleted_total{datname}
+postgres_stat_database_tup_fetched_total{datname}
+postgres_stat_database_tup_inserted_total{datname}
+postgres_stat_database_tup_returned_total{datname}
+postgres_stat_database_tup_updated_total{datname}
+postgres_stat_database_xact_commit_total{datname}
+postgres_stat_database_xact_rollback_total{datname}
+postgres_stat_user_indexes_scan_total{datname,indexname,relname,schemaname}
+postgres_stat_user_indexes_tuple_fetch_total{datname,indexname,relname,schemaname}
+postgres_stat_user_indexes_tuple_read_total{datname,indexname,relname,schemaname}
+postgres_stat_user_tables_analyze_total{datname,relname,schemaname}
+postgres_stat_user_tables_autoanalyze_total{datname,relname,schemaname}
+postgres_stat_user_tables_autovacuum_total{datname,relname,schemaname}
+postgres_stat_user_tables_idx_scan_total{datname,relname,schemaname}
+postgres_stat_user_tables_idx_tup_fetch_total{datname,relname,schemaname}
+postgres_stat_user_tables_last_analyze_timestamp{datname,relname,schemaname}
+postgres_stat_user_tables_last_autoanalyze_timestamp{datname,relname,schemaname}
+postgres_stat_user_tables_last_autovacuum_timestamp{datname,relname,schemaname}
+postgres_stat_user_tables_last_vacuum_timestamp{datname,relname,schemaname}
+postgres_stat_user_tables_n_dead_tup{datname,relname,schemaname}
+postgres_stat_user_tables_n_live_tup{datname,relname,schemaname}
+postgres_stat_user_tables_n_mod_since_analyze{datname,relname,schemaname}
+postgres_stat_user_tables_n_tup_del_total{datname,relname,schemaname}
+postgres_stat_user_tables_n_tup_hot_upd_total{datname,relname,schemaname}
+postgres_stat_user_tables_n_tup_hot_upd{datname,relname,schemaname}
+postgres_stat_user_tables_n_tup_ins_total{datname,relname,schemaname}
+postgres_stat_user_tables_n_tup_upd_total{datname,relname,schemaname}
+postgres_stat_user_tables_seq_scan_total{datname,relname,schemaname}
+postgres_stat_user_tables_seq_tup_read_total{datname,relname,schemaname}
+postgres_stat_user_tables_vacuum_total{datname,relname,schemaname}
+postgres_up{}
