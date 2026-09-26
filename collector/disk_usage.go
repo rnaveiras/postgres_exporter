@@ -3,7 +3,7 @@ package collector
 import (
 	"context"
 
-	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -18,7 +18,7 @@ const (
 	tableUsageQuery = `
 	SELECT schemaname
 		 , relname AS tablename
-		 , pg_table_size(schemaname || '.' || relname)::float AS size
+		 , pg_table_size(relid)::float AS size
   FROM pg_stat_user_tables /*postgres_exporter*/`
 )
 
@@ -49,57 +49,61 @@ func (*diskUsageScraper) Name() string {
 	return "DiskUsageScraper"
 }
 
-func (c *diskUsageScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
-	var datname, schemaname, tablename, indexname string
-	var sizeBytes float64
-	var rows pgx.Rows
-	var err error
-
-	if err := conn.QueryRow(ctx, "SELECT current_database() /*postgres_exporter*/").Scan(&datname); err != nil {
+func (c *diskUsageScraper) Scrape(ctx context.Context, conn Querier, _ Version, ch chan<- prometheus.Metric) error {
+	var datname string
+	if err := conn.QueryRow(ctx, currentDatabaseQuery).Scan(&datname); err != nil {
 		return err
 	}
+	if err := c.scrapeTables(ctx, conn, datname, ch); err != nil {
+		return err
+	}
+	return c.scrapeIndexes(ctx, conn, datname, ch)
+}
 
-	// Scan table sizes
-	rows, err = conn.Query(ctx, tableUsageQuery)
+func (c *diskUsageScraper) scrapeTables(ctx context.Context, conn Querier, datname string, ch chan<- prometheus.Metric) error {
+	rows, err := conn.Query(ctx, tableUsageQuery)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
+	var schemaname, tablename string
+	// sizeBytes is NULL for a relation dropped between the catalog read and the size call.
+	var sizeBytes pgtype.Float8
 	for rows.Next() {
 		if err := rows.Scan(&schemaname, &tablename, &sizeBytes); err != nil {
 			return err
 		}
+		if !sizeBytes.Valid {
+			continue
+		}
 
 		// postgres_disk_usage_table_bytes
-		ch <- prometheus.MustNewConstMetric(c.tableUsage, prometheus.GaugeValue, sizeBytes, datname, schemaname, tablename)
+		ch <- prometheus.MustNewConstMetric(c.tableUsage, prometheus.GaugeValue, sizeBytes.Float64, datname, schemaname, tablename)
 	}
+	return rows.Err()
+}
 
-	err = rows.Err()
-	if err != nil {
-		return err
-	}
-
-	// Scan index bytes
-	rows, err = conn.Query(ctx, indexUsageQuery)
+func (c *diskUsageScraper) scrapeIndexes(ctx context.Context, conn Querier, datname string, ch chan<- prometheus.Metric) error {
+	rows, err := conn.Query(ctx, indexUsageQuery)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
+	var schemaname, tablename, indexname string
+	// sizeBytes is NULL for an index dropped between the catalog read and the size call.
+	var sizeBytes pgtype.Float8
 	for rows.Next() {
 		if err := rows.Scan(&schemaname, &tablename, &indexname, &sizeBytes); err != nil {
 			return err
 		}
+		if !sizeBytes.Valid {
+			continue
+		}
 
 		// postgres_disk_usage_index_bytes
-		ch <- prometheus.MustNewConstMetric(c.indexUsage, prometheus.GaugeValue, sizeBytes, datname, schemaname, tablename, indexname)
+		ch <- prometheus.MustNewConstMetric(c.indexUsage, prometheus.GaugeValue, sizeBytes.Float64, datname, schemaname, tablename, indexname)
 	}
-
-	err = rows.Err()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return rows.Err()
 }

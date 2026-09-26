@@ -2,15 +2,17 @@ package collector
 
 import (
 	"context"
-	"time"
 
-	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// pg_stat_bgwriter lost its checkpoint and backend columns in PostgreSQL 17: checkpoint statistics moved to
+// pg_stat_checkpointer and backend writes to pg_stat_io.
 const (
-	// Scrape query.
-	statBgwriter = `
+	statBgwriterCheckpointerSplitVersion = 17
+
+	statBgwriterPre17 = `
 SELECT checkpoints_timed
      , checkpoints_req
      , checkpoint_write_time
@@ -23,7 +25,19 @@ SELECT checkpoints_timed
      , buffers_alloc
      , stats_reset
   FROM pg_stat_bgwriter /*postgres_exporter*/`
+
+	statBgwriter17 = `
+SELECT buffers_clean
+     , maxwritten_clean
+     , buffers_alloc
+     , stats_reset
+  FROM pg_stat_bgwriter /*postgres_exporter*/`
 )
+
+var statBgwriterQueries = versioned{
+	bestEffortVersion:                    statBgwriterPre17,
+	statBgwriterCheckpointerSplitVersion: statBgwriter17,
+}
 
 type statBgwriterScraper struct {
 	checkpointsTimed    *prometheus.Desc
@@ -115,14 +129,21 @@ func (*statBgwriterScraper) Name() string {
 	return "StatBgwriterScraper"
 }
 
-func (c *statBgwriterScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
+func (c *statBgwriterScraper) Scrape(ctx context.Context, conn Querier, version Version, ch chan<- prometheus.Metric) error {
+	if version.AtLeast(statBgwriterCheckpointerSplitVersion) {
+		return c.scrape17(ctx, conn, ch)
+	}
+	return c.scrapePre17(ctx, conn, ch)
+}
+
+func (c *statBgwriterScraper) scrapePre17(ctx context.Context, conn Querier, ch chan<- prometheus.Metric) error {
 	var checkpointsTimedCounter, checkpointsReqCounter,
 		buffersCheckpoint, buffersClean, maxWrittenClean,
 		buffersBackend, buffersBackendFsync, buffersAlloc int64
 	var checkpointWriteTime, checkpointSyncTime float64
-	var statsReset time.Time
+	var statsReset pgtype.Timestamptz
 
-	if err := conn.QueryRow(ctx, statBgwriter).
+	if err := conn.QueryRow(ctx, statBgwriterPre17).
 		Scan(&checkpointsTimedCounter,
 			&checkpointsReqCounter,
 			&checkpointWriteTime,
@@ -140,14 +161,38 @@ func (c *statBgwriterScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Vers
 
 	ch <- prometheus.MustNewConstMetric(c.checkpointsTimed, prometheus.CounterValue, float64(checkpointsTimedCounter))
 	ch <- prometheus.MustNewConstMetric(c.checkpointsReq, prometheus.CounterValue, float64(checkpointsReqCounter))
-	ch <- prometheus.MustNewConstMetric(c.checkpointWriteTime, prometheus.CounterValue, float64(checkpointWriteTime/1000))
-	ch <- prometheus.MustNewConstMetric(c.checkpointSyncTime, prometheus.CounterValue, float64(checkpointSyncTime/1000))
+	ch <- prometheus.MustNewConstMetric(c.checkpointWriteTime, prometheus.CounterValue, checkpointWriteTime/millisecondsPerSecond)
+	ch <- prometheus.MustNewConstMetric(c.checkpointSyncTime, prometheus.CounterValue, checkpointSyncTime/millisecondsPerSecond)
 	ch <- prometheus.MustNewConstMetric(c.buffersCheckpoint, prometheus.CounterValue, float64(buffersCheckpoint))
-	ch <- prometheus.MustNewConstMetric(c.buffersClean, prometheus.CounterValue, float64(buffersClean))
-	ch <- prometheus.MustNewConstMetric(c.maxWrittenClean, prometheus.CounterValue, float64(maxWrittenClean))
 	ch <- prometheus.MustNewConstMetric(c.buffersBackend, prometheus.CounterValue, float64(buffersBackend))
 	ch <- prometheus.MustNewConstMetric(c.buffersBackendFsync, prometheus.CounterValue, float64(buffersBackendFsync))
-	ch <- prometheus.MustNewConstMetric(c.buffersAlloc, prometheus.CounterValue, float64(buffersAlloc))
-	ch <- prometheus.MustNewConstMetric(c.statsReset, prometheus.GaugeValue, float64(statsReset.UTC().Unix()))
+	c.emitCommon(buffersClean, maxWrittenClean, buffersAlloc, statsReset, ch)
 	return nil
+}
+
+func (c *statBgwriterScraper) scrape17(ctx context.Context, conn Querier, ch chan<- prometheus.Metric) error {
+	var buffersClean, maxWrittenClean, buffersAlloc int64
+	var statsReset pgtype.Timestamptz
+
+	if err := conn.QueryRow(ctx, statBgwriter17).
+		Scan(&buffersClean,
+			&maxWrittenClean,
+			&buffersAlloc,
+			&statsReset,
+		); err != nil {
+		return err
+	}
+
+	c.emitCommon(buffersClean, maxWrittenClean, buffersAlloc, statsReset, ch)
+	return nil
+}
+
+// emitCommon emits the columns pg_stat_bgwriter has on every supported major.
+func (c *statBgwriterScraper) emitCommon(buffersClean, maxWrittenClean, buffersAlloc int64, statsReset pgtype.Timestamptz, ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(c.buffersClean, prometheus.CounterValue, float64(buffersClean))
+	ch <- prometheus.MustNewConstMetric(c.maxWrittenClean, prometheus.CounterValue, float64(maxWrittenClean))
+	ch <- prometheus.MustNewConstMetric(c.buffersAlloc, prometheus.CounterValue, float64(buffersAlloc))
+	if statsReset.Valid {
+		ch <- prometheus.MustNewConstMetric(c.statsReset, prometheus.GaugeValue, float64(statsReset.Time.Unix()))
+	}
 }

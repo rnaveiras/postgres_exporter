@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -44,6 +44,10 @@ const (
 	shutdownTimeout = 30 * time.Second
 )
 
+// defaultExcludedDatabases are administrative databases of managed Postgres services that the monitoring
+// role usually cannot connect to.
+var defaultExcludedDatabases = []string{"cloudsqladmin", "rdsadmin", "azure_maintenance", "azure_sys"}
+
 var handlerLock sync.Mutex
 
 type flagConfig struct {
@@ -53,10 +57,14 @@ type flagConfig struct {
 	LogLevel          string   `json:"log_level"`
 	LogFormat         string   `json:"log_format"`
 	Pprof             bool     `json:"pprof"`
+	LegacyNames       bool     `json:"legacy_names"`
 	ExcludedDatabases []string `json:"excluded_databases"`
+
+	// deprecated lists the deprecated flags that were set, as "old -> new" pairs, for a startup warning.
+	deprecated []string
 }
 
-// LogValue implemnts LogValuer interface.
+// LogValue implements the slog.LogValuer interface. The data source is left out: it may hold a password.
 func (f flagConfig) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("listen_address", f.ListenAddress),
@@ -64,14 +72,22 @@ func (f flagConfig) LogValue() slog.Value {
 		slog.String("log_level", f.LogLevel),
 		slog.String("log_format", f.LogFormat),
 		slog.Bool("pprof", f.Pprof),
+		slog.Bool("legacy_names", f.LegacyNames),
 		slog.Any("exclude_databases", f.ExcludedDatabases),
 	)
 }
 
-func main() {
-	cfg := flagConfig{}
+// deprecatedFlag is a renamed flag still accepted under its old name.
+type deprecatedFlag struct {
+	value *bool
+	// set is true whenever the old name is on the command line, including --no-<name>, so the warning
+	// does not depend on the value.
+	set bool
+}
 
-	a := kingpin.New(filepath.Base(os.Args[0]), "The Postgres Exporter").UsageWriter(os.Stdout)
+// newApp defines the command line flags and binds them to cfg.
+func newApp(cfg *flagConfig, usage io.Writer) (app *kingpin.Application, deprecatedPprof *deprecatedFlag) {
+	a := kingpin.New(filepath.Base(os.Args[0]), "The Postgres Exporter").UsageWriter(usage)
 	a.Version(version.Print("postgres_exporter"))
 	a.HelpFlag.Short('h')
 
@@ -85,7 +101,7 @@ func main() {
 		StringVar(&cfg.DataSource)
 
 	a.Flag("db.excluded-databases", "Repeat this flag for each database to exclude from monitoring").
-		Default("cloudsdqladmin", "rdsadmin").StringsVar(&cfg.ExcludedDatabases)
+		Default(defaultExcludedDatabases...).StringsVar(&cfg.ExcludedDatabases)
 
 	a.Flag("log.level", "Only log messages with the given severity or above. One of: [debug, info, warn, error]").
 		Default("info").EnumVar(&cfg.LogLevel, "debug", "info", "warn", "error")
@@ -93,10 +109,37 @@ func main() {
 	a.Flag("log.format", "Output format of log messages. One of: [logfmt, json]").
 		Default("logfmt").EnumVar(&cfg.LogFormat, "logfmt", "json")
 
-	a.Flag("web.enabled-pprof", "").
+	a.Flag("web.enable-pprof", "Serve the Go runtime profiling endpoints under /debug/pprof/.").
 		Default("false").BoolVar(&cfg.Pprof)
 
-	_, err := a.Parse(os.Args[1:])
+	a.Flag("compat.legacy-names", "Also emit deprecated metric names next to their replacements.").
+		Default("true").BoolVar(&cfg.LegacyNames)
+
+	// Deprecated: replaced by --web.enable-pprof.
+	deprecatedPprof = &deprecatedFlag{}
+	deprecatedPprof.value = a.Flag("web.enabled-pprof", "Deprecated: use --web.enable-pprof.").
+		Hidden().IsSetByUser(&deprecatedPprof.set).Bool()
+
+	return a, deprecatedPprof
+}
+
+// parseFlags parses args into a flagConfig and resolves deprecated flag aliases.
+func parseFlags(args []string, usage io.Writer) (flagConfig, *kingpin.Application, error) {
+	cfg := flagConfig{}
+	a, deprecatedPprof := newApp(&cfg, usage)
+	if _, err := a.Parse(args); err != nil {
+		return cfg, a, err
+	}
+
+	if deprecatedPprof.set {
+		cfg.Pprof = cfg.Pprof || *deprecatedPprof.value
+		cfg.deprecated = append(cfg.deprecated, "--web.enabled-pprof -> --web.enable-pprof")
+	}
+	return cfg, a, nil
+}
+
+func main() {
+	cfg, a, err := parseFlags(os.Args[1:], os.Stdout)
 	if err != nil {
 		parseErr := fmt.Errorf("error parsing command line arguments: %w", err)
 		fmt.Fprintln(os.Stderr, parseErr) //nolint:revive // exiting anyway, a failed stderr write changes nothing
@@ -114,7 +157,10 @@ func main() {
 
 	// Booting
 	logger.Info("starting postgres exporter", "version", version.Info())
-	logger.Info("", "build_context", version.BuildContext())
+	logger.Info("build context", "build_context", version.BuildContext())
+	for _, d := range cfg.deprecated {
+		logger.Warn("deprecated flag, use the replacement", "flag", d)
+	}
 
 	// Log cfg configuration
 	logger.Debug("cfg", "cfg", cfg)
@@ -153,26 +199,6 @@ func main() {
 		"application_name": "postgres_exporter",
 	}
 
-	// create a new servemux
-	mux := http.NewServeMux()
-	// register http endpoints
-	mux.Handle(cfg.MetricsPath, metricsHandler(logger, connConfig, cfg))
-	mux.Handle("/admin/loglevel", logLevelHandler(logger, logLevel))
-	mux.Handle("/", catchHandler(logger, cfg.MetricsPath))
-
-	// enable runtime profiling endpoints when pprof flag is set
-	if cfg.Pprof {
-		// Create a dedicated mux for pprof endpoints
-		debugMux := http.NewServeMux()
-		debugMux.HandleFunc("/debug/pprof/", pprof.Index)
-		debugMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		debugMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		debugMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		debugMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-
-		mux.Handle("/debug/pprof", debugMux)
-	}
-
 	logger = logger.With("component", "web")
 	logger.Info("start listening for connections",
 		"address", cfg.ListenAddress,
@@ -180,7 +206,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              cfg.ListenAddress,
-		Handler:           mux,
+		Handler:           newMux(logger, connConfig, cfg),
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
@@ -222,10 +248,31 @@ func main() {
 	logger.Info("server gracefully stopped")
 }
 
+// newMux registers the HTTP endpoints. The profiling endpoints exist only with --web.enable-pprof.
+func newMux(logger *slog.Logger, connConfig *pgx.ConnConfig, cfg flagConfig) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle(cfg.MetricsPath, metricsHandler(logger, connConfig, cfg))
+	mux.Handle("/", catchHandler(logger, cfg.MetricsPath))
+
+	if cfg.Pprof {
+		// pprof.Index serves every named profile under /debug/pprof/; the others need their own handlers.
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	}
+	return mux
+}
+
 // catchHandler creates an HTTP handler that serves the index page of the exporter.
 func catchHandler(logger *slog.Logger, metricsPath string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(`<html>
                <head><title>postgres Exporter</title></head>
@@ -249,7 +296,10 @@ func metricsHandler(logger *slog.Logger, connConfig *pgx.ConnConfig, cfg flagCon
 
 		registry := prometheus.NewRegistry()
 		registry.MustRegister(versioncollector.NewCollector("postgres_exporter"))
-		registry.MustRegister(collector.NewExporter(r.Context(), logger, connConfig, cfg.ExcludedDatabases))
+		registry.MustRegister(collector.NewExporter(r.Context(), logger, connConfig, collector.Options{
+			ExcludedDatabases: cfg.ExcludedDatabases,
+			LegacyNames:       cfg.LegacyNames,
+		}))
 
 		gatherers := prometheus.Gatherers{
 			prometheus.DefaultGatherer,
@@ -268,59 +318,13 @@ func metricsHandler(logger *slog.Logger, connConfig *pgx.ConnConfig, cfg flagCon
 	})
 }
 
-// logLevelHandler creates an HTTP handler that enables dynamic log level
-// adjustment.
-func logLevelHandler(logger *slog.Logger, logLevel *slog.LevelVar) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		type logLevelJSON struct {
-			Level string `json:"level"`
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-
-		switch r.Method {
-		case http.MethodGet:
-			// Return current logLevel
-			currentLevel := logLevel.Level().String()
-			if err := json.NewEncoder(w).Encode(logLevelJSON{Level: currentLevel}); err != nil {
-				http.Error(w, "error failed to encode JSON respose", http.StatusInternalServerError)
-				return
-			}
-
-		case http.MethodPatch:
-			var req logLevelJSON
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				http.Error(w, "error invalid request body", http.StatusBadRequest)
-				return
-			}
-
-			// Validate user input
-			validLevels := map[string]slog.Level{
-				"debug": slog.LevelDebug,
-				"info":  slog.LevelInfo,
-				"warn":  slog.LevelWarn,
-				"error": slog.LevelError,
-			}
-			level, ok := validLevels[strings.ToLower(req.Level)]
-			if !ok {
-				http.Error(w, "error invalid log level", http.StatusBadRequest)
-				return
-			}
-
-			logLevel.Set(level)
-			logger.Info("log level changed", "level", level)
-		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
-}
-
-// setupLogger configures the logger,.
+// setupLogger configures the logger.
 func setupLogger(logLevelVar *slog.LevelVar, logFormat, logLevel string) (*slog.Logger, error) {
-	// setup LogLevel
-	if err := setLogLevel(logLevelVar, logLevel); err != nil {
-		return nil, fmt.Errorf("error setting log level %w", err)
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(strings.ToLower(logLevel))); err != nil {
+		return nil, fmt.Errorf("error setting log level: %w", err)
 	}
+	logLevelVar.Set(level)
 
 	handlerOpts := slog.HandlerOptions{
 		Level:     logLevelVar,
@@ -338,22 +342,4 @@ func setupLogger(logLevelVar *slog.LevelVar, logFormat, logLevel string) (*slog.
 	slog.SetDefault(logger)
 
 	return logger, nil
-}
-
-// setLogLevel configures the log level from a string value.
-// Valid levels are: debug, info, warn, error.
-func setLogLevel(logLevel *slog.LevelVar, level string) error {
-	switch strings.ToLower(level) {
-	case "debug":
-		logLevel.Set(slog.LevelDebug)
-	case "info":
-		logLevel.Set(slog.LevelInfo)
-	case "warn":
-		logLevel.Set(slog.LevelWarn)
-	case "error":
-		logLevel.Set(slog.LevelError)
-	default:
-		return fmt.Errorf("invalid log level %q, valid levels are: debug, info, warn, error", level)
-	}
-	return nil
 }

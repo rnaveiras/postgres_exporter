@@ -6,6 +6,7 @@ const (
 	labelSchemaname = "schemaname"
 	labelRelname    = "relname"
 	labelIndexname  = "indexname"
-	labelPid        = "pid"
-	labelQueryStart = "query_start"
 )
+
+// millisecondsPerSecond converts the millisecond timings in pg_stat_* views to seconds.
+const millisecondsPerSecond = 1000.0

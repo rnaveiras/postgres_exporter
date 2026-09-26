@@ -4,7 +4,6 @@ import (
 	"context"
 	"strconv"
 
-	pgx "github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,7 +40,7 @@ func (*locksScraper) Name() string {
 	return "LocksScraper"
 }
 
-func (c *locksScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
+func (c *locksScraper) Scrape(ctx context.Context, conn Querier, _ Version, ch chan<- prometheus.Metric) error {
 	rows, err := conn.Query(ctx, locksQuery)
 	if err != nil {
 		return err

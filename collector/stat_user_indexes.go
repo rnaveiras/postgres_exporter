@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 
-	pgx "github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -24,8 +23,7 @@ SELECT schemaname
      , idx_tup_read::float
      , idx_tup_fetch::float
   FROM pg_stat_user_indexes
- WHERE schemaname != 'information_schema'
-  AND idx_tup_fetch IS NOT NULL /*postgres_exporter*/`
+ WHERE schemaname != 'information_schema' /*postgres_exporter*/`
 )
 
 type statUserIndexesScraper struct {
@@ -62,9 +60,9 @@ func (*statUserIndexesScraper) Name() string {
 	return "StatUserIndexesScraper"
 }
 
-func (c *statUserIndexesScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
+func (c *statUserIndexesScraper) Scrape(ctx context.Context, conn Querier, _ Version, ch chan<- prometheus.Metric) error {
 	var datname string
-	if err := conn.QueryRow(ctx, "SELECT current_database() /*postgres_exporter*/").Scan(&datname); err != nil {
+	if err := conn.QueryRow(ctx, currentDatabaseQuery).Scan(&datname); err != nil {
 		return err
 	}
 

@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 
-	pgx "github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -154,7 +153,7 @@ func (*statDatabaseScraper) Name() string {
 	return "StatDatabaseScraper"
 }
 
-func (c *statDatabaseScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
+func (c *statDatabaseScraper) Scrape(ctx context.Context, conn Querier, _ Version, ch chan<- prometheus.Metric) error {
 	rows, err := conn.Query(ctx, statDatabaseQuery)
 	if err != nil {
 		return err
@@ -183,10 +182,6 @@ func (c *statDatabaseScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Vers
 			return err
 		}
 
-		if rows.Err() != nil {
-			return err
-		}
-
 		// postgres_stat_database_numbackends
 		ch <- prometheus.MustNewConstMetric(c.numbackends, prometheus.GaugeValue, numbackends, datname)
 		// postgres_stat_database_tup_returned_total
@@ -198,7 +193,7 @@ func (c *statDatabaseScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Vers
 		// postgres_stat_database_tup_updated_total
 		ch <- prometheus.MustNewConstMetric(c.tupUpdated, prometheus.CounterValue, tupUpdated, datname)
 		// postgres_stat_database_tup_deleted_total
-		ch <- prometheus.MustNewConstMetric(c.tupDeleted, prometheus.CounterValue, tupUpdated, datname)
+		ch <- prometheus.MustNewConstMetric(c.tupDeleted, prometheus.CounterValue, tupDeleted, datname)
 		// postgres_stat_database_xact_commit_total
 		ch <- prometheus.MustNewConstMetric(c.xactCommit, prometheus.CounterValue, xactCommit, datname)
 		// postgres_stat_database_tup_xact_rollback_total

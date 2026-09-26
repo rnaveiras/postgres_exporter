@@ -4,16 +4,15 @@ import (
 	"context"
 	"time"
 
-	pgx "github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
-	isInRecoveryQuery           = `SELECT pg_is_in_recovery()::int /*postgres_exporter*/`
-	isInBackupQuery             = `SELECT pg_is_in_backup()::int /*postgres_exporter*/`
-	startTimeQuery              = `SELECT pg_postmaster_start_time() /*postgres_exporter*/`
-	configLoadTimeQuery         = `SELECT pg_conf_load_time() /*postgres_exporter*/`
-	isInBackupDeprecatedVersion = 15.0
+	isInRecoveryQuery        = `SELECT pg_is_in_recovery()::int /*postgres_exporter*/`
+	isInBackupQuery          = `SELECT pg_is_in_backup()::int /*postgres_exporter*/`
+	startTimeQuery           = `SELECT pg_postmaster_start_time() /*postgres_exporter*/`
+	configLoadTimeQuery      = `SELECT pg_conf_load_time() /*postgres_exporter*/`
+	isInBackupRemovedVersion = 15
 )
 
 type infoScraper struct {
@@ -57,8 +56,8 @@ func (*infoScraper) Name() string {
 	return "InfoScraper"
 }
 
-func (c *infoScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Version, ch chan<- prometheus.Metric) error {
-	var recovery, backup int64
+func (c *infoScraper) Scrape(ctx context.Context, conn Querier, version Version, ch chan<- prometheus.Metric) error {
+	var recovery int64
 	var startTime, configLoadTime time.Time
 
 	if err := conn.QueryRow(ctx, isInRecoveryQuery).Scan(&recovery); err != nil {
@@ -67,12 +66,8 @@ func (c *infoScraper) Scrape(ctx context.Context, conn *pgx.Conn, version Versio
 	// postgres_is_in_recovery
 	ch <- prometheus.MustNewConstMetric(c.isInRecovery, prometheus.GaugeValue, float64(recovery))
 
-	if err := conn.QueryRow(ctx, isInBackupQuery).Scan(&backup); err != nil {
-		return err
-	}
-
-	// postgres_is_in_backup was removed in PostgreSQL 15
-	if !version.Gte(isInBackupDeprecatedVersion) {
+	// pg_is_in_backup() was removed in PostgreSQL 15
+	if version.Before(isInBackupRemovedVersion) {
 		var backup int64
 		if err := conn.QueryRow(ctx, isInBackupQuery).Scan(&backup); err != nil {
 			return err

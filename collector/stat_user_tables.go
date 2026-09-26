@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	pgx "github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -22,8 +21,8 @@ SELECT schemaname
      , relname
      , seq_scan::float
      , seq_tup_read::float
-     , idx_scan::float
-     , idx_tup_fetch::float
+     , COALESCE(idx_scan, 0)::float AS idx_scan
+     , COALESCE(idx_tup_fetch, 0)::float AS idx_tup_fetch
      , n_tup_ins::float
      , n_tup_upd::float
      , n_tup_del::float
@@ -40,8 +39,7 @@ SELECT schemaname
      , analyze_count::float
      , autoanalyze_count::float
   FROM pg_stat_user_tables
- WHERE schemaname != 'information_schema'
-  AND idx_tup_fetch IS NOT NULL /*postgres_exporter*/`
+ WHERE schemaname != 'information_schema' /*postgres_exporter*/`
 )
 
 type statUserTablesScraper struct {
@@ -53,6 +51,8 @@ type statUserTablesScraper struct {
 	nTupUpd          *prometheus.Desc
 	nTupDel          *prometheus.Desc
 	nTupHotUpd       *prometheus.Desc
+	nTupHotUpdLegacy *prometheus.Desc
+	legacyNames      bool
 	nLiveTup         *prometheus.Desc
 	nDeadTup         *prometheus.Desc
 	nModSinceAnalyze *prometheus.Desc
@@ -66,9 +66,11 @@ type statUserTablesScraper struct {
 	autoanalyzeCount *prometheus.Desc
 }
 
-// NewStatUserTablesScraper returns a new Scraper exposing postgres pg_stat_database view.
-func NewStatUserTablesScraper() Scraper {
+// NewStatUserTablesScraper returns a new Scraper exposing postgres pg_stat_user_tables view. With legacyNames
+// it also emits the deprecated metric names.
+func NewStatUserTablesScraper(legacyNames bool) Scraper {
 	return &statUserTablesScraper{
+		legacyNames: legacyNames,
 		seqScan: prometheus.NewDesc(
 			"postgres_stat_user_tables_seq_scan_total",
 			"Number of sequential scans initiated on this table",
@@ -112,8 +114,14 @@ func NewStatUserTablesScraper() Scraper {
 			nil,
 		),
 		nTupHotUpd: prometheus.NewDesc(
-			"postgres_stat_user_tables_n_tup_hot_upd",
+			"postgres_stat_user_tables_n_tup_hot_upd_total",
 			"Number of rows HOT updated (i.e., with no separate index update required)",
+			[]string{labelDatname, labelSchemaname, labelRelname},
+			nil,
+		),
+		nTupHotUpdLegacy: prometheus.NewDesc(
+			"postgres_stat_user_tables_n_tup_hot_upd",
+			"(DEPRECATED) Use postgres_stat_user_tables_n_tup_hot_upd_total. Number of rows HOT updated (i.e., with no separate index update required)",
 			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
@@ -190,9 +198,9 @@ func (*statUserTablesScraper) Name() string {
 	return "StatUserTablesScraper"
 }
 
-func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
+func (c *statUserTablesScraper) Scrape(ctx context.Context, conn Querier, _ Version, ch chan<- prometheus.Metric) error {
 	var datname string
-	if err := conn.QueryRow(ctx, "SELECT current_database() /*postgres_exporter*/").Scan(&datname); err != nil {
+	if err := conn.QueryRow(ctx, currentDatabaseQuery).Scan(&datname); err != nil {
 		return err
 	}
 
@@ -250,6 +258,10 @@ func (c *statUserTablesScraper) Scrape(ctx context.Context, conn *pgx.Conn, _ Ve
 		ch <- prometheus.MustNewConstMetric(c.nTupDel, prometheus.CounterValue, nTupDel, datname, schemaname, relname)
 		// postgres_stat_user_tables_n_tup_hot_upd_total
 		ch <- prometheus.MustNewConstMetric(c.nTupHotUpd, prometheus.CounterValue, nTupHotUpd, datname, schemaname, relname)
+		if c.legacyNames {
+			// postgres_stat_user_tables_n_tup_hot_upd (deprecated)
+			ch <- prometheus.MustNewConstMetric(c.nTupHotUpdLegacy, prometheus.CounterValue, nTupHotUpd, datname, schemaname, relname)
+		}
 
 		// postgres_stat_user_tables_n_live_tup
 		ch <- prometheus.MustNewConstMetric(c.nLiveTup, prometheus.GaugeValue, nLiveTup, datname, schemaname, relname)

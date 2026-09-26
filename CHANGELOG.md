@@ -1,4 +1,56 @@
-## Version 0.10.0 / 2020-02-23
+## unreleased
+
+PostgreSQL 14 to 18 are supported. Every collector now works on PostgreSQL 15, 16, 17 and 18.
+
+* [CHANGE] `postgres_stat_vacuum_progress_*` lose the `pid` and `query_start` labels; series are identified by
+  `datname`, `schemaname` and `relname`. Remove `pid`/`query_start` from selectors and `by (...)` clauses.
+* [CHANGE] On PostgreSQL 17+ `postgres_stat_vacuum_progress_max_dead_tuples` and `..._num_dead_tuples` are replaced by
+  `..._max_dead_tuple_bytes`, `..._dead_tuple_bytes` and `..._num_dead_item_ids`, following the view.
+* [CHANGE] On PostgreSQL 17+ `postgres_stat_bgwriter_checkpoints_*`, `..._checkpoint_*_time_seconds_total`,
+  `..._buffers_checkpoint_total`, `..._buffers_backend_total` and `..._buffers_backend_fsync_total` are not emitted.
+  Checkpoint metrics come from the new `postgres_stat_checkpointer_*`, e.g.
+  `rate(postgres_stat_bgwriter_checkpoints_timed_total[5m])` becomes
+  `rate(postgres_stat_checkpointer_num_timed_total[5m])`.
+* [CHANGE] `postgres_is_in_backup` is not emitted on PostgreSQL 15+, where `pg_is_in_backup()` no longer exists.
+* [CHANGE] `postgres_stat_user_tables_n_tup_hot_upd` is deprecated in favour of
+  `postgres_stat_user_tables_n_tup_hot_upd_total`. Both are emitted while `--compat.legacy-names` is on (the
+  default); the old name will be removed.
+* [CHANGE] `--db.excluded-databases` defaults to `cloudsqladmin`, `rdsadmin`, `azure_maintenance` and `azure_sys`.
+  The previous default misspelled `cloudsqladmin`.
+* [CHANGE] `--web.enabled-pprof` is deprecated in favour of `--web.enable-pprof`. The old name still works and logs a
+  warning at startup.
+* [CHANGE] The unauthenticated `/admin/loglevel` endpoint is removed. Set the level with `--log.level`.
+* [CHANGE] PostgreSQL 9.x and 10–13 code paths are removed. PostgreSQL 13 and older are scraped on a best-effort basis
+  and log a warning.
+* [FEATURE] `postgres_stat_checkpointer_*` collector for PostgreSQL 17+, with `num_done` and `slru_written` on 18+.
+* [FEATURE] `--compat.legacy-names` flag (default `true`) to keep emitting deprecated metric names.
+* [ENHANCEMENT] `postgres_info` gains the `version_num` (`server_version_num`) and `platform` (`community`, `rds`,
+  `aurora`, `cloudsql`, `azure_flexible`) labels; `version` is the server's `server_version` without the packager
+  suffix, e.g. `17.6` for `17.6 (Debian 17.6-1.pgdg12+1)`.
+* [ENHANCEMENT] `postgres_exporter_unsupported_version` and `postgres_exporter_untested_version` gauges.
+* [ENHANCEMENT] A database the exporter cannot connect to is reported as
+  `postgres_exporter_scraper_success{scraper="connect",datname="..."} 0` and no longer stops the other databases.
+* [ENHANCEMENT] A failed database list is reported as `postgres_exporter_scraper_success{scraper="list_databases"} 0`;
+  before, every per-database series vanished with only a log line.
+* [BUGFIX] The info, bgwriter and vacuum-progress collectors failed on PostgreSQL 15+ / 17+.
+* [BUGFIX] `postgres_stat_database_tup_deleted_total` reported the updated-rows count.
+* [BUGFIX] `postgres_info{version}` truncated minor versions of 10 or more (`16.10` was reported as `16.1`) and
+  was `0` on beta releases.
+* [BUGFIX] The disk-usage collector failed for the whole database when a table had a mixed-case, quoted or dotted
+  name.
+* [BUGFIX] The disk-usage collector failed for the whole database when a table or index was dropped during the scrape,
+  e.g. another session's temporary table.
+* [BUGFIX] `postgres_up` was `1` for a server that accepted the connection but could not run queries; it is now `0`.
+* [BUGFIX] Tables without indexes were missing from `postgres_stat_user_tables_*`.
+* [BUGFIX] The archiver collector failed on clusters whose archiver statistics were never reset.
+* [BUGFIX] `postgres_stat_replication_lag_bytes` reported `client_addr="<nil>"` for replicas connected over a Unix
+  socket; the label is now empty.
+* [BUGFIX] After scraping a database that was later dropped, the exporter reported `postgres_up 0` until restarted,
+  and the global collectors ran against the last scraped database.
+* [BUGFIX] With an empty `--db.excluded-databases` list no database was scraped.
+* [BUGFIX] `pprof` endpoints under `/debug/pprof/` were unreachable.
+
+## Version 0.10.0 / 2022-02-23
 
 [full changelog](https://github.com/rnaveiras/postgres_exporter/compare/v0.9.0...v0.10.0)
 

@@ -2,9 +2,8 @@ package collector
 
 import (
 	"context"
-	"time"
 
-	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -51,9 +50,10 @@ func (*statArchiverScraper) Name() string {
 	return "StatArchiverScraper"
 }
 
-func (c *statArchiverScraper) Scrape(ctx context.Context, db *pgx.Conn, _ Version, ch chan<- prometheus.Metric) error {
+func (c *statArchiverScraper) Scrape(ctx context.Context, db Querier, _ Version, ch chan<- prometheus.Metric) error {
 	var archivedCount, failedCount int64
-	var statsReset time.Time
+	// stats_reset is NULL until the statistics are reset for the first time.
+	var statsReset pgtype.Timestamptz
 
 	if err := db.QueryRow(ctx, statArchiver).
 		Scan(&archivedCount,
@@ -65,6 +65,8 @@ func (c *statArchiverScraper) Scrape(ctx context.Context, db *pgx.Conn, _ Versio
 
 	ch <- prometheus.MustNewConstMetric(c.archivedCount, prometheus.CounterValue, float64(archivedCount))
 	ch <- prometheus.MustNewConstMetric(c.failedCount, prometheus.CounterValue, float64(failedCount))
-	ch <- prometheus.MustNewConstMetric(c.statsReset, prometheus.GaugeValue, float64(statsReset.UTC().Unix()))
+	if statsReset.Valid {
+		ch <- prometheus.MustNewConstMetric(c.statsReset, prometheus.GaugeValue, float64(statsReset.Time.Unix()))
+	}
 	return nil
 }
