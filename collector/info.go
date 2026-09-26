@@ -23,7 +23,7 @@ type infoScraper struct {
 	configLoadTime *prometheus.Desc
 }
 
-// NewInfoScraper returns a new Scraper exposing postgres info
+// NewInfoScraper returns a new Scraper exposing postgres info.
 func NewInfoScraper() Scraper {
 	return &infoScraper{
 		isInRecovery: prometheus.NewDesc(

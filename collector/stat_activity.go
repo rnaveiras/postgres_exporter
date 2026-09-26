@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	// Scrape query
+	// Scrape query.
 	statActivityQuery = `
 WITH states AS (
     SELECT
@@ -45,23 +45,23 @@ FROM
 
 	// Oldest transaction timestamp
 	// ignore when backend_xid is null, so excludes autovacuumn, autoanalyze
-	// and other maintenance tasks
+	// and other maintenance tasks.
 	statActivityScraperXactQuery = `
 SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(xact_start), current_timestamp))) AS xact_start
   FROM pg_stat_activity
  WHERE state IN ('idle in transaction', 'active')
    AND backend_xid IS NOT NULL /*postgres_exporter*/`
 
-	// Oldest backend timestamp
+	// Oldest backend timestamp.
 	statActivityScraperBackendStartQuery = `SELECT min(backend_start) FROM pg_stat_activity /*postgres_exporter*/`
 
-	// Oldest query in running state (long queries)"
+	// Oldest query in running state (long queries)".
 	statActivityScraperActiveQuery = `
 SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(query_start), clock_timestamp())))
   FROM pg_stat_activity
  WHERE state='active' AND backend_type = 'client backend' /*postgres_exporter*/`
 
-	// Oldest Snapshot
+	// Oldest Snapshot.
 	statActivityScraperOldestSnapshotQuery = `
 SELECT EXTRACT(EPOCH FROM age(clock_timestamp(), coalesce(min(query_start), clock_timestamp())))
   FROM pg_stat_activity
@@ -82,13 +82,13 @@ type statActivityScraper struct {
 	xmin        *prometheus.Desc
 }
 
-// NewStatActivityScraper returns a new Scraper exposing postgres pg_stat_activity
+// NewStatActivityScraper returns a new Scraper exposing postgres pg_stat_activity.
 func NewStatActivityScraper() Scraper {
 	return &statActivityScraper{
 		connections: prometheus.NewDesc(
 			"postgres_stat_activity_connections",
 			"Number of current connections in their current state",
-			[]string{"datname", "state"},
+			[]string{labelDatname, "state"},
 			nil,
 		),
 		backend: prometheus.NewDesc(

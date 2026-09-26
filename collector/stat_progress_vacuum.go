@@ -9,10 +9,10 @@ import (
 
 const (
 	// metricEnabled represent the value used when a metrics state is
-	// active/enabled
+	// active/enabled.
 	metricEnabled = 1.0
 
-	// Scrape query
+	// Scrape query.
 	statVacuumProgress = `
 SELECT V.pid::text
      , V.datname
@@ -49,91 +49,91 @@ type statVacuumProgressScraper struct {
 	numDeadTuples               *prometheus.Desc
 }
 
-// NewStatVacuumProgressScraper returns a new Scraper exposing postgres pg_stat_vacuum_progress_*
+// NewStatVacuumProgressScraper returns a new Scraper exposing postgres pg_stat_vacuum_progress_*.
 func NewStatVacuumProgressScraper() Scraper {
 	return &statVacuumProgressScraper{
 		running: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_running",
 			"VACUUM is running",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		phaseInitializing: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_phase_initializing",
 			"VACUUM is preparing to begin scanning the heap",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		phaseScanningHeap: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_phase_scanning_heap",
 			"VACUUM is currently scanning the heap",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		phaseVacuumingIndexes: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_phase_vacuuming_indexes",
 			"VACUUM is currently vacuuming the indexes",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		phaseVacuumingHeap: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_phase_vacuuming_heap",
 			"VACUUM is currently vacuuming the heap",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		phaseCleaningUpIndexes: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_phase_cleaning_up_indexes",
 			"VACUUM is currently cleaning up indexes",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		phaseTruncatingHeap: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_phase_truncating_heap",
 			"VACUUM is currently truncating the heap",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		phasePerformingFinalCleanup: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_phase_performing_final_cleanup",
 			"VACUUM is performing final cleanup",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		heapBlksTotal: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_heap_blks_total",
 			"Total number of heap blocks in the table",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		heapBlksScanned: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_heap_blks_scanned",
 			"Number of heap blocks scanned",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		heapBlksVacuumed: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_heap_blks_vacuumed",
 			"Number of heap blocks vacuumed",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		indexVacuumCount: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_index_vacuum_count",
 			"Number of completed index vacuum cycles",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		maxDeadTuples: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_max_dead_tuples",
 			"Number of dead tuples that we can store before needing to perform an index vacuum cycle",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 		numDeadTuples: prometheus.NewDesc(
 			"postgres_stat_vacuum_progress_num_dead_tuples",
 			"Number of dead tuples collected since the last index vacuum cycle",
-			[]string{"pid", "query_start", "schemaname", "datname", "relname"},
+			[]string{labelPid, labelQueryStart, labelSchemaname, labelDatname, labelRelname},
 			nil,
 		),
 	}

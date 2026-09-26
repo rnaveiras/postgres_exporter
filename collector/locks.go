@@ -25,13 +25,13 @@ type locksScraper struct {
 	locks *prometheus.Desc
 }
 
-// NewLocksScraper returns a new Scraper exposing data from pg_locks
+// NewLocksScraper returns a new Scraper exposing data from pg_locks.
 func NewLocksScraper() Scraper {
 	return &locksScraper{
 		locks: prometheus.NewDesc(
 			"postgres_locks_table",
 			"Number of locks by datname, locktype, mode and granted",
-			[]string{"datname", "locktype", "mode", "granted"},
+			[]string{labelDatname, "locktype", "mode", "granted"},
 			nil,
 		),
 	}

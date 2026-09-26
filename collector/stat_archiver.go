@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	// Scrape query
+	// Scrape query.
 	statArchiver = `
 SELECT archived_count
      , failed_count
@@ -23,7 +23,7 @@ type statArchiverScraper struct {
 	statsReset    *prometheus.Desc
 }
 
-// NewStatarchiverScraper returns a new Scraper exposing PostgreSQL `pg_stat_archiver` view
+// NewStatarchiverScraper returns a new Scraper exposing PostgreSQL `pg_stat_archiver` view.
 func NewStatArchiverScraper() Scraper {
 	return &statArchiverScraper{
 		archivedCount: prometheus.NewDesc(

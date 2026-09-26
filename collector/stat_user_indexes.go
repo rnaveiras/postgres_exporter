@@ -15,7 +15,7 @@ import (
 // spent in each one.
 // https://www.postgresql.org/docs/9.4/static/monitoring-stats.html#PG-STAT-ALL-INDEXES-VIEW
 const (
-	// Scrape query
+	// Scrape query.
 	statUserIndexesQuery = `
 SELECT schemaname
      , relname
@@ -34,25 +34,25 @@ type statUserIndexesScraper struct {
 	idxTupFetch *prometheus.Desc
 }
 
-// NewStatUserIndexesScraper returns a new Scraper exposing postgres pg_stat_user_indexes view
+// NewStatUserIndexesScraper returns a new Scraper exposing postgres pg_stat_user_indexes view.
 func NewStatUserIndexesScraper() Scraper {
 	return &statUserIndexesScraper{
 		idxScan: prometheus.NewDesc(
 			"postgres_stat_user_indexes_scan_total",
 			"Number of times this index has been scanned",
-			[]string{"datname", "schemaname", "relname", "indexname"},
+			[]string{labelDatname, labelSchemaname, labelRelname, labelIndexname},
 			nil,
 		),
 		idxTupRead: prometheus.NewDesc(
 			"postgres_stat_user_indexes_tuple_read_total",
 			"Number of times tuples have been returned from scanning this index",
-			[]string{"datname", "schemaname", "relname", "indexname"},
+			[]string{labelDatname, labelSchemaname, labelRelname, labelIndexname},
 			nil,
 		),
 		idxTupFetch: prometheus.NewDesc(
 			"postgres_stat_user_indexes_tuple_fetch_total",
 			"Number of live tuples fetched by scans on this index",
-			[]string{"datname", "schemaname", "relname", "indexname"},
+			[]string{labelDatname, labelSchemaname, labelRelname, labelIndexname},
 			nil,
 		),
 	}

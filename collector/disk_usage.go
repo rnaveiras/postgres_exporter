@@ -27,19 +27,19 @@ type diskUsageScraper struct {
 	tableUsage *prometheus.Desc
 }
 
-// NewDiskUsageScraper returns a new Scraper exposing postgres disk usage view
+// NewDiskUsageScraper returns a new Scraper exposing postgres disk usage view.
 func NewDiskUsageScraper() Scraper {
 	return &diskUsageScraper{
 		indexUsage: prometheus.NewDesc(
 			"postgres_disk_usage_index_bytes",
 			"Bytes used on disk to store this index",
-			[]string{"datname", "schemaname", "tablename", "indexname"},
+			[]string{labelDatname, labelSchemaname, "tablename", labelIndexname},
 			nil,
 		),
 		tableUsage: prometheus.NewDesc(
 			"postgres_disk_usage_table_bytes",
 			"Bytes used on disk to store this table",
-			[]string{"datname", "schemaname", "tablename"},
+			[]string{labelDatname, labelSchemaname, "tablename"},
 			nil,
 		),
 	}

@@ -2,13 +2,12 @@ package collector
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,13 +40,13 @@ var (
 	scrapeDurationDesc = prometheus.NewDesc(
 		"postgres_exporter_scraper_duration_seconds",
 		"Duration of a scrapers scrape.",
-		[]string{"scraper", "datname"},
+		[]string{"scraper", labelDatname},
 		nil,
 	)
 	scrapeSuccessDesc = prometheus.NewDesc(
 		"postgres_exporter_scraper_success",
 		"Whether a scraper succeeded.",
-		[]string{"scraper", "datname"},
+		[]string{"scraper", labelDatname},
 		nil,
 	)
 )
@@ -60,7 +59,7 @@ type Scraper interface {
 }
 
 type Exporter struct {
-	ctx               context.Context
+	ctx               context.Context //nolint:containedctx // removed when the context is passed to Collect instead of stored
 	logger            *slog.Logger
 	connConfig        *pgx.ConnConfig
 	scrapers          []Scraper
@@ -68,14 +67,14 @@ type Exporter struct {
 	excludedDatabases []string
 }
 
-// Postgres Version
+// Postgres Version.
 type Version struct {
 	version float64
 }
 
 func NewVersion(v string) Version {
 	values := strings.Split(v, " ")
-	version, _ := strconv.ParseFloat(values[0], versionBitSize)
+	version, _ := strconv.ParseFloat(values[0], versionBitSize) //nolint:errcheck // "17beta1" parses as 0; removed when this parser is replaced
 	return Version{
 		version: version,
 	}
@@ -86,10 +85,10 @@ func (v Version) Gte(n float64) bool {
 }
 
 func (v Version) String() string {
-	return fmt.Sprintf("%g", v.version)
+	return strconv.FormatFloat(v.version, 'g', -1, 64)
 }
 
-// Verify our Exporter satisfies the prometheus.Collector interface
+// Verify our Exporter satisfies the prometheus.Collector interface.
 var _ prometheus.Collector = (*Exporter)(nil)
 
 // NewExporter is called every time we receive a scrape request and knows how
@@ -120,7 +119,7 @@ func NewExporter(ctx context.Context, logger *slog.Logger, connConfig *pgx.ConnC
 }
 
 // Describe implements the prometheus.Collector interface.
-func (Exporter) Describe(ch chan<- *prometheus.Desc) {
+func (*Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
 	ch <- scrapeSuccessDesc
 }

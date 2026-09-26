@@ -13,9 +13,9 @@ const pgVersion float64 = 10
 // When pg_basebackup is running in stream mode, it opens a second connection
 // to the server and starts streaming the transaction log in parallel while
 // running the backup. In both connections (state=backup and state=streaming) the
-// pg_log_location_diff is null and it requires to be excluded
+// pg_log_location_diff is null and it requires to be excluded.
 const (
-	// Scrape query
+	// Scrape query.
 	statReplicationLagBytes9x = `
 WITH pg_replication AS (
   SELECT application_name
@@ -29,7 +29,9 @@ WITH pg_replication AS (
 	     ) AS pg_xlog_location_diff
     FROM pg_stat_replication
 )
-SELECT * FROM pg_replication WHERE pg_xlog_location_diff IS NOT NULL /*postgres_exporter*/`
+SELECT application_name, client_addr, state, sync_state, pg_xlog_location_diff
+  FROM pg_replication
+ WHERE pg_xlog_location_diff IS NOT NULL /*postgres_exporter*/`
 
 	statReplicationLagBytes = `
 WITH pg_replication AS (
@@ -44,14 +46,16 @@ WITH pg_replication AS (
 	     ) AS pg_xlog_location_diff
     FROM pg_stat_replication
 )
-SELECT * FROM pg_replication WHERE pg_xlog_location_diff IS NOT NULL /*postgres_exporter*/`
+SELECT application_name, client_addr, state, sync_state, pg_xlog_location_diff
+  FROM pg_replication
+ WHERE pg_xlog_location_diff IS NOT NULL /*postgres_exporter*/`
 )
 
 type statReplicationScraper struct {
 	lagBytes *prometheus.Desc
 }
 
-// NewStatReplicationScraper returns a new Scraper exposing postgres pg_stat_replication
+// NewStatReplicationScraper returns a new Scraper exposing postgres pg_stat_replication.
 func NewStatReplicationScraper() Scraper {
 	return &statReplicationScraper{
 		lagBytes: prometheus.NewDesc(

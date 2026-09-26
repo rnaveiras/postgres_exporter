@@ -17,12 +17,13 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/jackc/pgx/v5"
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/tracelog"
 	"github.com/prometheus/client_golang/prometheus"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+
 	"github.com/rnaveiras/postgres_exporter/collector"
 )
 
@@ -30,16 +31,16 @@ const (
 	errorKey      = "error"
 	exitCodeError = 1
 
-	// Server timeouts
+	// Concurrent /metrics requests served before promhttp returns 503.
+	maxRequestsInFlight = 15
+
+	// Server timeouts.
 	readTimeout       = 5 * time.Second
 	writeTimeout      = 10 * time.Second
 	idleTimeout       = 120 * time.Second
 	readHeaderTimeout = 5 * time.Second
 
-	// Global request timeout
-	// globalRequestTimeout = 30 * time.Second
-
-	// Graceful shutdown timeout
+	// Graceful shutdown timeout.
 	shutdownTimeout = 30 * time.Second
 )
 
@@ -55,7 +56,7 @@ type flagConfig struct {
 	ExcludedDatabases []string `json:"excluded_databases"`
 }
 
-// LogValue implemnts LogValuer interface
+// LogValue implemnts LogValuer interface.
 func (f flagConfig) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("listen_address", f.ListenAddress),
@@ -97,8 +98,8 @@ func main() {
 
 	_, err := a.Parse(os.Args[1:])
 	if err != nil {
-		//nolint:revive // Exiting anyway, so we can ignore
-		fmt.Fprintln(os.Stderr, fmt.Errorf("error parsing command line arguments: %w", err))
+		parseErr := fmt.Errorf("error parsing command line arguments: %w", err)
+		fmt.Fprintln(os.Stderr, parseErr) //nolint:revive // exiting anyway, a failed stderr write changes nothing
 		a.Usage(os.Args[1:])
 		os.Exit(exitCodeError)
 	}
@@ -107,8 +108,7 @@ func main() {
 	logLevel := new(slog.LevelVar)
 	logger, err := setupLogger(logLevel, cfg.LogFormat, cfg.LogLevel)
 	if err != nil {
-		//nolint:revive // Exiting anyway, so we can ignore
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, err) //nolint:revive // exiting anyway, a failed stderr write changes nothing
 		os.Exit(exitCodeError)
 	}
 
@@ -262,14 +262,14 @@ func metricsHandler(logger *slog.Logger, connConfig *pgx.ConnConfig, cfg flagCon
 			promhttp.HandlerFor(gatherers, promhttp.HandlerOpts{
 				ErrorHandling:       promhttp.ContinueOnError,
 				Registry:            registry,
-				MaxRequestsInFlight: 15,
+				MaxRequestsInFlight: maxRequestsInFlight,
 			}))
 		h.ServeHTTP(w, r)
 	})
 }
 
 // logLevelHandler creates an HTTP handler that enables dynamic log level
-// adjustment
+// adjustment.
 func logLevelHandler(logger *slog.Logger, logLevel *slog.LevelVar) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		type logLevelJSON struct {
@@ -315,8 +315,8 @@ func logLevelHandler(logger *slog.Logger, logLevel *slog.LevelVar) http.Handler 
 	})
 }
 
-// setupLogger configures the logger,
-func setupLogger(logLevelVar *slog.LevelVar, logFormat string, logLevel string) (*slog.Logger, error) {
+// setupLogger configures the logger,.
+func setupLogger(logLevelVar *slog.LevelVar, logFormat, logLevel string) (*slog.Logger, error) {
 	// setup LogLevel
 	if err := setLogLevel(logLevelVar, logLevel); err != nil {
 		return nil, fmt.Errorf("error setting log level %w", err)
@@ -341,7 +341,7 @@ func setupLogger(logLevelVar *slog.LevelVar, logFormat string, logLevel string) 
 }
 
 // setLogLevel configures the log level from a string value.
-// Valid levels are: debug, info, warn, error
+// Valid levels are: debug, info, warn, error.
 func setLogLevel(logLevel *slog.LevelVar, level string) error {
 	switch strings.ToLower(level) {
 	case "debug":

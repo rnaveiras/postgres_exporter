@@ -1,8 +1,24 @@
 ---
+# golangci-lint v2.13.2. Validate changes with `golangci-lint config verify`.
 version: "2"
 
+run:
+  timeout: 5m
+  relative-path-mode: gomod
+  modules-download-mode: readonly
+  build-tags:
+    - integration
+    - acceptance
+
+issues:
+  # golangci-lint stops at 50 issues per linter and 3 identical messages by default; CI must see everything.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
 linters:
+  default: none
   enable:
+    # kept from the current config
     - staticcheck
     - errcheck
     - govet
@@ -24,9 +40,92 @@ linters:
     - spancheck
     - sqlclosecheck
     - usestdlibvars
-    - gocyclo
     - gocritic
+    # modern Go
+    - modernize
+    - copyloopvar
+    - intrange
+    - exptostd
+    - perfsprint
+    - usetesting
+    # tests
+    - testifylint
+    - thelper
+    - tparallel
+    # correctness
+    - nolintlint
+    - unparam
+    - unconvert
+    - wastedassign
+    - noctx
+    - contextcheck
+    - containedctx
+    - fatcontext
+    - nilnesserr
+    - nilerr
+    - nilnil
+    - recvcheck
+    - iface
+    - exhaustive
+    - rowserrcheck
+    - musttag
+    - asasalint
+    - bidichk
+    - durationcheck
+    - makezero
+    - reassign
+    - predeclared
+    - errchkjson
+    - gocheckcompilerdirectives
+    - iotamixing
+    - embeddedstructfieldcheck
+    - dogsled
+    - canonicalheader
+    - nosprintfhostport
+    - loggercheck
+    - unqueryvet
+    - inamedparam
+    - testableexamples
+    - goprintffuncname
+    - mirror
+    - nakedret
+    - asciicheck
+    # policy
+    - forbidigo
+    - depguard
+    - gomodguard_v2
+    - gomoddirectives
+    - tagliatelle
+    # style
+    - godot
+    - dupword
+    - goconst
+    - nestif
+    - mnd
+    - whitespace
+
   settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+    staticcheck:
+      checks:
+        - all
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gocyclo:
+      min-complexity: 12
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - hugeParam
+        - unnamedResult
     revive:
       enable-all-rules: true
       rules:
@@ -41,20 +140,186 @@ linters:
           arguments:
             - 12
         - name: cyclomatic
-          arguments:
-            - 12
+          disabled: true
+        - name: add-constant
+          disabled: true
+        - name: max-public-structs
+          disabled: true
     sloglint:
       no-global: all
       static-msg: true
       key-naming-case: snake
       args-on-sep-lines: true
+      msg-style: lowercased
+    modernize:
+      disable: []
+    exhaustive:
+      default-signifies-exhaustive: false
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+    usetesting:
+      context-background: true
+      context-todo: true
+      os-temp-dir: true
+    testifylint:
+      enable-all: true
+    thelper:
+      test:
+        first: true
+        name: true
+        begin: true
+    iface:
+      enable:
+        - identical
+        - unused
+        # - opaque   # enable once constructors return concrete types; today every New*Scraper returns Scraper
+    nakedret:
+      max-func-lines: 0
+    forbidigo:
+      analyze-types: true
+      forbid:
+        # Enable once collectors read time through an injected clock.
+        # - pattern: ^time\.Now$
+        #   pkg: ^time$
+        #   msg: "inject collector.Clock so TTL and duration tests run under testing/synctest"
+        # Enable once typed metric helpers exist: fixed-arity helpers make a label-count mismatch a compile error.
+        # - pattern: ^prometheus\.MustNewConstMetric$
+        #   pkg: ^github\.com/prometheus/client_golang/prometheus$
+        #   msg: "use the typed helpers in collector/metrics.go"
+        - pattern: ^fmt\.Sprintf$
+          pkg: ^fmt$
+          msg: "collector SQL is a constant in a VersionedQuery; format numbers with strconv and messages with slog attrs"
+        - pattern: ^context\.(Background|TODO)$
+          pkg: ^context$
+          msg: "derive from the request or signal context; only main and TestMain may create a root context"
+        - pattern: ^os\.Exit$
+          pkg: ^os$
+          msg: "only main exits; return an error"
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          deny:
+            - pkg: github.com/lib/pq
+              desc: "pgx/v5 is the only Postgres driver"
+            - pkg: database/sql
+              desc: "collectors use the pgx native interface (Querier); database/sql loses pgtype and Batch"
+            - pkg: github.com/jackc/pgx/v4
+              desc: "pgx/v5 only"
+            - pkg: github.com/jackc/pgconn
+              desc: "pgx/v4-era module; use github.com/jackc/pgx/v5/pgconn"
+            - pkg: github.com/pkg/errors
+              desc: "use fmt.Errorf with %w and errors.Join/AsType"
+            - pkg: golang.org/x/exp
+              desc: "slices, maps, min/max are in the standard library since Go 1.21"
+            - pkg: io/ioutil
+              desc: "deprecated since Go 1.19"
+            - pkg: math/rand$
+              desc: "use math/rand/v2"
+            - pkg: log$
+              desc: "log/slog only; loggers are injected, never global"
+            - pkg: github.com/go-kit/log
+              desc: "log/slog only"
+            - pkg: github.com/prometheus/client_golang/prometheus/promauto
+              desc: "registers on the global registry; the exporter builds its own registry in main"
+    gomodguard_v2:
+      local-replace-directives: true
+      blocked:
+        - module: github.com/lib/pq
+          reason: "pgx/v5 only"
+        - module: github.com/jackc/pgx/v4
+          reason: "pgx/v5 only"
+        - module: github.com/pkg/errors
+          reason: "standard errors package"
+        - module: github.com/go-kit/log
+          reason: "log/slog only"
+    gomoddirectives:
+      replace-local: false
+      exclude-forbidden: true
+      toolchain-forbidden: true
+      go-version-pattern: '^1\.\d+\.\d+$'
+    tagliatelle:
+      case:
+        rules:
+          db: snake
+          json: snake
+          yaml: snake
+    godot:
+      scope: toplevel
+      capital: false
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+      ignore-string-values:
+        - '^SELECT '
+    nestif:
+      min-complexity: 5
+    mnd:
+      checks:
+        - argument
+        - case
+        - condition
+        - return
+        - assign
+      ignored-numbers:
+        - "0"
+        - "1"
+        - "2"
+        - "10"
+        - "100"
+        - "1000"
+        - "1024"
+      ignored-functions:
+        - '^time\.'
+        - '^strconv\.'
+        - '^make$'
+        - '^kingpin\.'
+        - '^prometheus\.'
+    misspell:
+      locale: US
+    importas:
+      no-unaliased: true
+      alias:
+        - pkg: github.com/jackc/pgx/v5
+          alias: pgx
+        - pkg: github.com/prometheus/client_golang/prometheus/collectors/version
+          alias: versioncollector
+    gosec:
+      excludes:
+        - G104
+
   exclusions:
     generated: lax
     presets:
       - comments
       - common-false-positives
-      - legacy
       - std-error-handling
+    rules:
+      # forbidigo scoping: the SQL/time/metric rules apply to collectors only; root contexts are main's job.
+      - path-except: ^collector/
+        linters: [forbidigo]
+        text: fmt\.Sprintf
+      - path: ^postgres_exporter\.go$
+        linters: [forbidigo]
+        text: (context\.(Background|TODO)|os\.Exit)
+      # The two disabled rules above are scoped like this when enabled.
+      # - path: ^collector/clock\.go$
+      #   linters: [forbidigo]
+      #   text: time\.Now
+      # - path: ^collector/metrics\.go$
+      #   linters: [forbidigo]
+      #   text: prometheus\.MustNewConstMetric
+      - path: (^|/)main_test\.go$
+        linters: [forbidigo]
+        text: context\.Background
+      # tests: relax size/complexity and magic numbers, keep everything else
+      - path: _test\.go$
+        linters: [mnd, goconst, funlen, gocyclo, nestif, gosec, containedctx, forbidigo]
+      - path: _test\.go$
+        linters: [revive]
+        text: (function-length|cognitive-complexity|line-length-limit)
     paths:
       - third_party$
       - builtin$
@@ -64,6 +329,20 @@ formatters:
   enable:
     - gofumpt
     - goimports
+    - golines
+  settings:
+    gofumpt:
+      module-path: github.com/rnaveiras/postgres_exporter
+      extra:
+        group-params: true
+    goimports:
+      local-prefixes:
+        - github.com/rnaveiras/postgres_exporter
+    golines:
+      max-len: 160
+      tab-len: 4
+      reformat-tags: true
+      shorten-comments: false
   exclusions:
     generated: lax
     paths:

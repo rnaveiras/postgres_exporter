@@ -11,12 +11,13 @@ const (
 	pgxLogMessage = "pgx log"
 )
 
-// SlogAdapter adapts slog to pgx logger interface
+// SlogAdapter adapts slog to pgx logger interface.
 type SlogAdapter struct {
 	logger *slog.Logger
 }
 
 func (s *SlogAdapter) Log(ctx context.Context, level tracelog.LogLevel, msg string, data map[string]any) {
+	// The zero value is slog.LevelInfo, which also covers levels added by a newer pgx.
 	var slogLevel slog.Level
 
 	switch level {
@@ -26,7 +27,7 @@ func (s *SlogAdapter) Log(ctx context.Context, level tracelog.LogLevel, msg stri
 		slogLevel = slog.LevelWarn
 	case tracelog.LogLevelError:
 		slogLevel = slog.LevelError
-	default:
+	case tracelog.LogLevelInfo, tracelog.LogLevelNone:
 		slogLevel = slog.LevelInfo
 	}
 

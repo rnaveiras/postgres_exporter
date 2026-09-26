@@ -16,7 +16,7 @@ import (
 // spent in each one.
 // https://www.postgresql.org/docs/9.4/static/monitoring-stats.html#PG-STAT-ALL-TABLES-VIEW
 const (
-	// Scrape query
+	// Scrape query.
 	statUserTablesQuery = `
 SELECT schemaname
      , relname
@@ -66,121 +66,121 @@ type statUserTablesScraper struct {
 	autoanalyzeCount *prometheus.Desc
 }
 
-// NewStatUserTablesScraper returns a new Scraper exposing postgres pg_stat_database view
+// NewStatUserTablesScraper returns a new Scraper exposing postgres pg_stat_database view.
 func NewStatUserTablesScraper() Scraper {
 	return &statUserTablesScraper{
 		seqScan: prometheus.NewDesc(
 			"postgres_stat_user_tables_seq_scan_total",
 			"Number of sequential scans initiated on this table",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		seqTupRead: prometheus.NewDesc(
 			"postgres_stat_user_tables_seq_tup_read_total",
 			"Number of live rows fetched by sequential scans",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		idxScan: prometheus.NewDesc(
 			"postgres_stat_user_tables_idx_scan_total",
 			"Number of index scans initiated on this table",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		idxTupFetch: prometheus.NewDesc(
 			"postgres_stat_user_tables_idx_tup_fetch_total",
 			"Number of live rows fetched by index scans",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		nTupIns: prometheus.NewDesc(
 			"postgres_stat_user_tables_n_tup_ins_total",
 			"Number of rows inserted",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		nTupUpd: prometheus.NewDesc(
 			"postgres_stat_user_tables_n_tup_upd_total",
 			"Number of rows updated",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		nTupDel: prometheus.NewDesc(
 			"postgres_stat_user_tables_n_tup_del_total",
 			"Number of rows deleted",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		nTupHotUpd: prometheus.NewDesc(
 			"postgres_stat_user_tables_n_tup_hot_upd",
 			"Number of rows HOT updated (i.e., with no separate index update required)",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		nLiveTup: prometheus.NewDesc(
 			"postgres_stat_user_tables_n_live_tup",
 			"Estimated number of live rows",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		nDeadTup: prometheus.NewDesc(
 			"postgres_stat_user_tables_n_dead_tup",
 			"Estimated number of dead rows",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		nModSinceAnalyze: prometheus.NewDesc(
 			"postgres_stat_user_tables_n_mod_since_analyze",
 			"Estimated number of rows modified since this table was last analyzed",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		lastAnalyze: prometheus.NewDesc(
 			"postgres_stat_user_tables_last_analyze_timestamp",
 			"Last time at which this table was manually analyzed",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		lastAutoAnalyze: prometheus.NewDesc(
 			"postgres_stat_user_tables_last_autoanalyze_timestamp",
 			"Last time at which this table was analyzed by the autovacuum daemon",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		lastVacuum: prometheus.NewDesc(
 			"postgres_stat_user_tables_last_vacuum_timestamp",
 			"Last time at which this table was manually vacuumed (not counting VACUUM FULL)",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		lastAutoVacuum: prometheus.NewDesc(
 			"postgres_stat_user_tables_last_autovacuum_timestamp",
 			"Last time at which this table was vacuumed by the autovacuum daemon",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		vacuumCount: prometheus.NewDesc(
 			"postgres_stat_user_tables_vacuum_total",
 			"Number of times this table has been manually vacuumed (not counting VACUUM FULL)",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		autovacuumCount: prometheus.NewDesc(
 			"postgres_stat_user_tables_autovacuum_total",
 			"Number of times this table has been vacuumed by the autovacuum daemon",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		analyzeCount: prometheus.NewDesc(
 			"postgres_stat_user_tables_analyze_total",
 			"Number of times this table has been manually analyzed",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 		autoanalyzeCount: prometheus.NewDesc(
 			"postgres_stat_user_tables_autoanalyze_total",
 			"Number of times this table has been analyzed by the autovacuum daemon",
-			[]string{"datname", "schemaname", "relname"},
+			[]string{labelDatname, labelSchemaname, labelRelname},
 			nil,
 		),
 	}

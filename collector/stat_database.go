@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	// Scrape query
+	// Scrape query.
 	statDatabaseQuery = `
 SELECT datname
      , numbackends::float
@@ -61,75 +61,75 @@ func NewStatDatabaseScraper() Scraper {
 			"Number of backends currently connected to this database. This is the only column in this"+
 				" view that returns a value reflecting current state; all other columns return the accumulated"+
 				" values since the last reset.",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		tupReturned: prometheus.NewDesc(
 			"postgres_stat_database_tup_returned_total",
 			"Number of rows returned by queries in this database",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		tupFetched: prometheus.NewDesc(
 			"postgres_stat_database_tup_fetched_total",
 			"Number of rows fetched by queries in this database",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		tupInserted: prometheus.NewDesc(
 			"postgres_stat_database_tup_inserted_total",
 			"Number of rows inserted by queries in this database",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		tupUpdated: prometheus.NewDesc(
 			"postgres_stat_database_tup_updated_total",
 			"Number of rows updated by queries in this database",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		tupDeleted: prometheus.NewDesc(
 			"postgres_stat_database_tup_deleted_total",
 			"Number of rows deleted by queries in this database",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		xactCommit: prometheus.NewDesc(
 			"postgres_stat_database_xact_commit_total",
 			"Number of transactions in this database that have been committed",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		xactRollback: prometheus.NewDesc(
 			"postgres_stat_database_xact_rollback_total",
 			"Number of transactions in this database that have been rolled back",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		blksRead: prometheus.NewDesc(
 			"postgres_stat_database_blks_read_total",
 			"Number of disk blocks read in this database",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		blksHit: prometheus.NewDesc(
 			"postgres_stat_database_blks_hit_total",
 			"Number of times disk blocks were found already in the buffer cache, so that a read was not necessary"+
 				" (this only includes hits in the PostgreSQL buffer cache, not the operating system's file system cache)",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		conflicts: prometheus.NewDesc(
 			"postgres_stat_database_conflicts_total",
 			"Number of queries canceled due to conflicts with recovery in this database."+
 				" (Conflicts occur only on standby servers; see pg_stat_database_conflicts for details.)",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		deadlocks: prometheus.NewDesc(
 			"postgres_stat_database_deadlocks_total",
 			"Number of deadlocks detected in this database",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		tempFiles: prometheus.NewDesc(
@@ -137,14 +137,14 @@ func NewStatDatabaseScraper() Scraper {
 			"Number of temporary files created by queries in this database. All temporary files are counted,"+
 				" regardless of why the temporary file was created (e.g., sorting or hashing), and regardless of "+
 				" the log_temp_files setting.",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 		tempBytes: prometheus.NewDesc(
 			"postgres_stat_database_temp_bytes_total",
 			"Total amount of data written to temporary files by queries in this database. All temporary files"+
 				" are counted, regardless of why the temporary file was created, and regardless of the log_temp_files setting.",
-			[]string{"datname"},
+			[]string{labelDatname},
 			nil,
 		),
 	}

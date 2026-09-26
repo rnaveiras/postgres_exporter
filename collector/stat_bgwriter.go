@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	// Scrape query
+	// Scrape query.
 	statBgwriter = `
 SELECT checkpoints_timed
      , checkpoints_req
@@ -39,7 +39,7 @@ type statBgwriterScraper struct {
 	statsReset          *prometheus.Desc
 }
 
-// NewStatBgwriterScraper returns a new Scraper exposing PostgreSQL `pg_stat_bgwriter` view
+// NewStatBgwriterScraper returns a new Scraper exposing PostgreSQL `pg_stat_bgwriter` view.
 func NewStatBgwriterScraper() Scraper {
 	return &statBgwriterScraper{
 		checkpointsTimed: prometheus.NewDesc(
