@@ -18,9 +18,10 @@ local hygiene = new Mapping<String, Step> {
   ["pkl"] = Builtins.pkl
   ["renovate-config"] {
     glob = List("renovate.json5")
-    // renovate-config-validator comes from the `npm:renovate` pin in mise.toml. With no file argument it
-    // validates renovate.json5 as repository config, which is what Renovate reads.
-    check = "renovate-config-validator --strict"
+    // renovate comes from the `npm:renovate` pin in mise.toml. Its validator script is run directly on
+    // the bun runtime, so node is not needed (aube's bin shim would exec `node`). With no file argument
+    // it validates renovate.json5 as repository config, which is what Renovate reads.
+    check = "bun --bun \"$(mise where npm:renovate)/node_modules/renovate/dist/config-validator.js\" --strict"
   }
 }
 

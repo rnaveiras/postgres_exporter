@@ -16,9 +16,13 @@ yamllint = "1.38.0"
 "aqua:prometheus/prometheus" = "3.13.1"
 "go:github.com/prometheus/promu" = "0.17.0"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
-# Provides renovate-config-validator for the hk `renovate-config` step (the npm backend needs node).
-node = "24.21.0"
-"npm:renovate" = "44.115.7"
+# Provides renovate-config-validator for the hk `renovate-config` step. CI installs it with aube
+# (MISE_NPM_PACKAGE_MANAGER in the workflow) and bun runs it, so node is not needed.
+# @yarnpkg/libzip@3.2.2 is exempt from aube's provenance check: Yarn maintainers published it by hand
+# (2025-09-18) instead of through their CI. Its gitHead 2eb9830 is the "Releasing 16 new packages" commit
+# in yarnpkg/berry. Remove the exemption when renovate stops depending on that version.
+bun = "1.4.2"
+"npm:renovate" = { version = "44.115.7", trust_policy_excludes = ["@yarnpkg/libzip@3.2.2"] }
 
 [env]
 # pgfresh is a private module. The token itself is never stored here; see CONTRIBUTING.md.

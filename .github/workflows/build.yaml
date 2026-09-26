@@ -21,6 +21,8 @@ env:
   GOTOOLCHAIN: local
   GOFLAGS: -mod=readonly
   GOWORK: "off"
+  # Install npm-backend tools (renovate) with aube, which enforces supply-chain trust policies.
+  MISE_NPM_PACKAGE_MANAGER: aube
 
 jobs:
   linters:
