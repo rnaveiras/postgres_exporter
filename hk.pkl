@@ -27,6 +27,11 @@ local hygiene = new Mapping<String, Step> {
 
 // Go steps. golangci-lint runs gofumpt, goimports and golines as formatters (see .golangci.yaml), so it is
 // the only Go formatter/linter step; `go vet` is covered by its govet linter.
+//
+// The integration/ module needs the private pgfresh module, which the CI linters job cannot fetch, so these
+// steps skip it; the integration CI job lints it (`mise run lint:integration`) and checks its go.mod.
+local goExclude = List("integration/**")
+
 local golang = new Mapping<String, Step> {
   ["golangci-config-verify"] {
     glob = List(".golangci.yaml")
@@ -34,14 +39,18 @@ local golang = new Mapping<String, Step> {
   }
   ["golangci-lint"] = (Builtins.golangci_lint) {
     depends = List("golangci-config-verify")
+    exclude = goExclude
   }
-  ["go-fix"] = Builtins.go_fix
-  ["go-mod-tidy"] = Builtins.gomod_tidy
+  ["go-fix"] = (Builtins.go_fix) { exclude = goExclude }
+  ["go-mod-tidy"] = (Builtins.gomod_tidy) { exclude = goExclude }
 }
 
 // Slow steps that need network or minutes. Only in pre-push and `hk check --all` (HK_PROFILE=slow).
 local slow = new Mapping<String, Step> {
-  ["govulncheck"] = (Builtins.go_vuln_check) { profiles = List("slow") }
+  ["govulncheck"] = (Builtins.go_vuln_check) {
+    profiles = List("slow")
+    exclude = goExclude
+  }
 }
 
 hooks {
