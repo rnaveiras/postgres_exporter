@@ -18,7 +18,9 @@ env:
   # true when a push on the main branch
   PUSH_ARTIFACT: |
     ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'pull_request' }}
+  # renovate: datasource=golang-version depName=go
   GO_VERSION: "1.27.1"
+  # renovate: datasource=github-releases depName=golangci/golangci-lint
   GOLANGCI_LINT_VERSION: "v2.13.2"
 
 jobs:
