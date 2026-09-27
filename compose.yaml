@@ -72,13 +72,15 @@ services:
     profiles:
       - postgres17
 
+  # 18+ images keep PGDATA in a major-specific subdirectory (/var/lib/postgresql/18/docker), so the volume
+  # mounts one level up; mounting at .../data makes the entrypoint refuse to start.
   postgres18:
     <<: *postgres
     image: postgres:18.4@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a
     ports:
       - "5418:5432"
     volumes:
-      - postgres_data_18:/var/lib/postgresql/data
+      - postgres_data_18:/var/lib/postgresql
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
     profiles:
       - postgres18
@@ -90,7 +92,7 @@ services:
     ports:
       - "5419:5432"
     volumes:
-      - postgres_data_19:/var/lib/postgresql/data
+      - postgres_data_19:/var/lib/postgresql
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf
     profiles:
       - postgres19
