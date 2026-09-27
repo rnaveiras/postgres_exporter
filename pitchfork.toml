@@ -23,7 +23,7 @@ depends = ["pg14"]
 
 # Exporter from source, connected as the least-privilege role. Restarts on Go changes.
 [daemons.exporter-pg14]
-run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+run = "exec go run ./cmd/postgres_exporter --log.level=debug --web.listen-address=127.0.0.1:9187"
 mise = true
 depends = ["seed-pg14"]
 watch = ["**/*.go", "go.mod", "go.sum"]
@@ -48,7 +48,7 @@ depends = ["pg15"]
 
 # Exporter from source, connected as the least-privilege role. Restarts on Go changes.
 [daemons.exporter-pg15]
-run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+run = "exec go run ./cmd/postgres_exporter --log.level=debug --web.listen-address=127.0.0.1:9187"
 mise = true
 depends = ["seed-pg15"]
 watch = ["**/*.go", "go.mod", "go.sum"]
@@ -73,7 +73,7 @@ depends = ["pg16"]
 
 # Exporter from source, connected as the least-privilege role. Restarts on Go changes.
 [daemons.exporter-pg16]
-run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+run = "exec go run ./cmd/postgres_exporter --log.level=debug --web.listen-address=127.0.0.1:9187"
 mise = true
 depends = ["seed-pg16"]
 watch = ["**/*.go", "go.mod", "go.sum"]
@@ -98,7 +98,7 @@ depends = ["pg17"]
 
 # Exporter from source, connected as the least-privilege role. Restarts on Go changes.
 [daemons.exporter-pg17]
-run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+run = "exec go run ./cmd/postgres_exporter --log.level=debug --web.listen-address=127.0.0.1:9187"
 mise = true
 depends = ["seed-pg17"]
 watch = ["**/*.go", "go.mod", "go.sum"]
@@ -123,7 +123,7 @@ depends = ["pg18"]
 
 # Exporter from source, connected as the least-privilege role. Restarts on Go changes.
 [daemons.exporter-pg18]
-run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+run = "exec go run ./cmd/postgres_exporter --log.level=debug --web.listen-address=127.0.0.1:9187"
 mise = true
 depends = ["seed-pg18"]
 watch = ["**/*.go", "go.mod", "go.sum"]
@@ -148,7 +148,7 @@ depends = ["pg19beta"]
 
 # Exporter from source, connected as the least-privilege role. Restarts on Go changes.
 [daemons.exporter-pg19beta]
-run = "exec go run . --log.level=debug --web.listen-address=127.0.0.1:9187"
+run = "exec go run ./cmd/postgres_exporter --log.level=debug --web.listen-address=127.0.0.1:9187"
 mise = true
 depends = ["seed-pg19beta"]
 watch = ["**/*.go", "go.mod", "go.sum"]

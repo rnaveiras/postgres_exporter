@@ -17,8 +17,10 @@ PostgreSQL 14 to 18 are supported. Every collector now works on PostgreSQL 15, 1
   default); the old name will be removed.
 * [CHANGE] `--db.excluded-databases` defaults to `cloudsqladmin`, `rdsadmin`, `azure_maintenance` and `azure_sys`.
   The previous default misspelled `cloudsqladmin`.
-* [CHANGE] `--web.enabled-pprof` is deprecated in favour of `--web.enable-pprof`. The old name still works and logs a
-  warning at startup.
+* [CHANGE] `--web.enabled-pprof` is renamed to `--web.enable-pprof`. The old name was never in a release, so it is not
+  kept as an alias.
+* [CHANGE] The command moved to `cmd/postgres_exporter`; install it with
+  `go install github.com/rnaveiras/postgres_exporter/cmd/postgres_exporter@latest`.
 * [CHANGE] The unauthenticated `/admin/loglevel` endpoint is removed. Set the level with `--log.level`, or at
   runtime with `/-/log-level` behind `--web.enable-admin-api`.
 * [CHANGE] PostgreSQL 9.x and 10–13 code paths are removed. PostgreSQL 13 and older are scraped on a best-effort basis
@@ -53,7 +55,8 @@ PostgreSQL 14 to 18 are supported. Every collector now works on PostgreSQL 15, 1
   and the global collectors ran against the last scraped database.
 * [BUGFIX] With an empty `--db.excluded-databases` list no database was scraped.
 * [BUGFIX] `pprof` endpoints under `/debug/pprof/` were unreachable.
-* [BUGFIX] The exporter kept running without serving when `--web.listen-address` could not be bound; it now exits.
+* [BUGFIX] The exporter kept running without serving when `--web.listen-address` could not be bound, or when the HTTP
+  server stopped; it now exits with an error.
 
 ## Version 0.10.0 / 2022-02-23
 

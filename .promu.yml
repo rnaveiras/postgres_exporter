@@ -7,7 +7,7 @@ build:
   prefix: .
   binaries:
     - name: postgres_exporter
-      path: ./
+      path: ./cmd/postgres_exporter
   flags: -a -tags netgo
   ldflags: |
     -X github.com/prometheus/common/version.Version={{.Version}}

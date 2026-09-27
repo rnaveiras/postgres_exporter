@@ -1,7 +1,6 @@
-package main
+package server
 
 import (
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -12,39 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestParseFlagsDefaults(t *testing.T) {
-	t.Parallel()
-
-	cfg, _, err := parseFlags(nil, io.Discard)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"cloudsqladmin", "rdsadmin", "azure_maintenance", "azure_sys"}, cfg.ExcludedDatabases)
-	assert.False(t, cfg.Pprof)
-	assert.True(t, cfg.LegacyNames)
-	assert.Empty(t, cfg.deprecated)
-}
-
-func TestParseFlagsDeprecatedPprof(t *testing.T) {
-	t.Parallel()
-
-	cfg, _, err := parseFlags([]string{"--web.enabled-pprof"}, io.Discard)
-	require.NoError(t, err)
-	assert.True(t, cfg.Pprof)
-	assert.Equal(t, []string{"--web.enabled-pprof -> --web.enable-pprof"}, cfg.deprecated)
-
-	cfg, _, err = parseFlags([]string{"--web.enable-pprof"}, io.Discard)
-	require.NoError(t, err)
-	assert.True(t, cfg.Pprof)
-	assert.Empty(t, cfg.deprecated)
-
-	// an explicit --no- form still uses the old name, so it must warn before the alias is removed.
-	for _, arg := range []string{"--no-web.enabled-pprof"} {
-		cfg, _, err = parseFlags([]string{arg}, io.Discard)
-		require.NoError(t, err, arg)
-		assert.False(t, cfg.Pprof, arg)
-		assert.Equal(t, []string{"--web.enabled-pprof -> --web.enable-pprof"}, cfg.deprecated, arg)
-	}
-}
 
 func TestMuxRoutes(t *testing.T) {
 	t.Parallel()
@@ -84,7 +50,7 @@ func TestMuxRoutes(t *testing.T) {
 
 			ready := new(atomic.Bool)
 			ready.Store(true)
-			cfg := flagConfig{MetricsPath: "/metrics", Pprof: tt.pprof, AdminAPI: tt.adminAPI}
+			cfg := Config{MetricsPath: "/metrics", Pprof: tt.pprof, AdminAPI: tt.adminAPI}
 			mux := newMux(logger, connConfig, cfg, new(slog.LevelVar), ready)
 
 			method := tt.method
@@ -97,16 +63,4 @@ func TestMuxRoutes(t *testing.T) {
 			assert.Equal(t, tt.want, rec.Code)
 		})
 	}
-}
-
-func TestParseFlagsAdminAPI(t *testing.T) {
-	t.Parallel()
-
-	cfg, _, err := parseFlags(nil, io.Discard)
-	require.NoError(t, err)
-	assert.False(t, cfg.AdminAPI)
-
-	cfg, _, err = parseFlags([]string{"--web.enable-admin-api"}, io.Discard)
-	require.NoError(t, err)
-	assert.True(t, cfg.AdminAPI)
 }

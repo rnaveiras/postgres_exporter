@@ -1,4 +1,4 @@
-package main
+package server
 
 // Management endpoints under /-/, following the Prometheus management API
 // (https://prometheus.io/docs/prometheus/latest/management_api/). /-/healthy and /-/ready are always served

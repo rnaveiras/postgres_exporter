@@ -5,6 +5,7 @@ before:
 
 builds:
   - binary: postgres_exporter
+    main: ./cmd/postgres_exporter
     flags: -a -tags netgo
     ldflags: >
       -X github.com/prometheus/common/version.Version={{.Version}}

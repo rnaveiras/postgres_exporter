@@ -304,7 +304,7 @@ linters:
       - path-except: ^collector/
         linters: [forbidigo]
         text: fmt\.Sprintf
-      - path: ^postgres_exporter\.go$
+      - path: ^cmd/postgres_exporter/main\.go$
         linters: [forbidigo]
         text: (context\.(Background|TODO)|os\.Exit)
       # The two disabled rules above are scoped like this when enabled.
