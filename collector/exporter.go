@@ -73,7 +73,8 @@ var (
 		nil,
 	)
 
-	// versionLog rate-limits the version support log lines across scrapes.
+	// versionLog rate-limits the version support log lines across scrapes. It is package level because
+	// metricsHandler builds a new Exporter per request, and state on the Exporter would reset every scrape.
 	versionLog = &versionLogger{last: map[int]time.Time{}}
 )
 
@@ -261,8 +262,10 @@ func (e *Exporter) report(name, datname string, duration time.Duration, err erro
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name, datname)
 }
 
-// reportVersionSupport emits the version support gauges and logs, rate-limited, when the server is outside
-// the tested range. Scraping always continues.
+// reportVersionSupport emits the version support gauges on every scrape and logs when the server is outside
+// the tested range. The log lines are rate-limited by versionLog: an unsupported server warns at most once
+// per unsupportedVersionWarnInterval, an untested one logs once per process. Alert on the gauges, not the
+// logs. Scraping always continues.
 func (e *Exporter) reportVersionSupport(v Version, ch chan<- prometheus.Metric) {
 	unsupported, untested := failureValue, failureValue
 
@@ -304,12 +307,17 @@ func queryVersion(ctx context.Context, db Querier) (Version, error) {
 	return ParseVersion(num, full)
 }
 
-// versionLogger remembers when each major was last logged. An interval of 0 logs once per process.
+// versionLogger rate-limits the "unsupported" and "untested" version log lines. reportVersionSupport runs
+// on every scrape, so without it an unsupported server would log the same message every scrape interval.
+// It remembers when each major was last logged, so a server that changes major logs straight away.
 type versionLogger struct {
 	mu   sync.Mutex
 	last map[int]time.Time
 }
 
+// due reports whether the message for major should be logged now, and records it as logged when it
+// returns true. It returns false while the last log for major is younger than interval; an interval of 0
+// logs once per process.
 func (l *versionLogger) due(major int, interval time.Duration) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
