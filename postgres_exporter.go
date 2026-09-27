@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -57,6 +59,7 @@ type flagConfig struct {
 	LogLevel          string   `json:"log_level"`
 	LogFormat         string   `json:"log_format"`
 	Pprof             bool     `json:"pprof"`
+	AdminAPI          bool     `json:"admin_api"`
 	LegacyNames       bool     `json:"legacy_names"`
 	ExcludedDatabases []string `json:"excluded_databases"`
 
@@ -72,6 +75,7 @@ func (f flagConfig) LogValue() slog.Value {
 		slog.String("log_level", f.LogLevel),
 		slog.String("log_format", f.LogFormat),
 		slog.Bool("pprof", f.Pprof),
+		slog.Bool("admin_api", f.AdminAPI),
 		slog.Bool("legacy_names", f.LegacyNames),
 		slog.Any("exclude_databases", f.ExcludedDatabases),
 	)
@@ -111,6 +115,10 @@ func newApp(cfg *flagConfig, usage io.Writer) (app *kingpin.Application, depreca
 
 	a.Flag("web.enable-pprof", "Serve the Go runtime profiling endpoints under /debug/pprof/.").
 		Default("false").BoolVar(&cfg.Pprof)
+
+	a.Flag("web.enable-admin-api", "Serve "+logLevelPath+", which reads and changes the log level at runtime. "+
+		"It has no authentication: enable it only where the listen address is trusted.").
+		Default("false").BoolVar(&cfg.AdminAPI)
 
 	a.Flag("compat.legacy-names", "Also emit deprecated metric names next to their replacements.").
 		Default("true").BoolVar(&cfg.LegacyNames)
@@ -200,13 +208,25 @@ func main() {
 	}
 
 	logger = logger.With("component", "web")
+	if cfg.AdminAPI {
+		logger.Warn("admin API enabled, its endpoints have no authentication", "path", logLevelPath)
+	}
+
+	// Bind before serving so a busy address fails the start and /-/ready turns true only once it is bound.
+	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", cfg.ListenAddress)
+	if err != nil {
+		logger.Error("listen",
+			slog.String("address", cfg.ListenAddress),
+			slog.Any(errorKey, err))
+		os.Exit(exitCodeError)
+	}
 	logger.Info("start listening for connections",
-		"address", cfg.ListenAddress,
+		"address", listener.Addr().String(),
 	)
 
+	ready := new(atomic.Bool)
 	server := &http.Server{
-		Addr:              cfg.ListenAddress,
-		Handler:           newMux(logger, connConfig, cfg),
+		Handler:           newMux(logger, connConfig, cfg, logLevel, ready),
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
@@ -216,13 +236,13 @@ func main() {
 	}
 
 	go func() {
-		err = server.ListenAndServe()
-		if err != nil {
-			logger.Error("failed listen and server",
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("serve",
 				slog.Any(errorKey, err))
 		}
 	}()
 
+	ready.Store(true)
 	logger.Info("ready")
 
 	// Create a context that will be canceled on receiving a shutdown signal
@@ -235,6 +255,7 @@ func main() {
 
 	logger.Info("shutting down server - received signal",
 		errorKey, ctx.Err())
+	ready.Store(false)
 
 	// Create a deadline to wait for current operations to complete
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
@@ -248,11 +269,20 @@ func main() {
 	logger.Info("server gracefully stopped")
 }
 
-// newMux registers the HTTP endpoints. The profiling endpoints exist only with --web.enable-pprof.
-func newMux(logger *slog.Logger, connConfig *pgx.ConnConfig, cfg flagConfig) *http.ServeMux {
+// newMux registers the HTTP endpoints. The profiling endpoints exist only with --web.enable-pprof and the
+// admin endpoints only with --web.enable-admin-api.
+func newMux(logger *slog.Logger, connConfig *pgx.ConnConfig, cfg flagConfig, logLevel *slog.LevelVar,
+	ready *atomic.Bool,
+) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle(cfg.MetricsPath, metricsHandler(logger, connConfig, cfg))
+	mux.Handle("GET "+healthyPath, healthyHandler(logger))
+	mux.Handle("GET "+readyPath, readyHandler(logger, ready))
 	mux.Handle("/", catchHandler(logger, cfg.MetricsPath))
+
+	if cfg.AdminAPI {
+		mux.Handle(logLevelPath, newLogLevelControl(logger, logLevel))
+	}
 
 	if cfg.Pprof {
 		// pprof.Index serves every named profile under /debug/pprof/; the others need their own handlers.

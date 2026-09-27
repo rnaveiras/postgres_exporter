@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	pgx "github.com/jackc/pgx/v5"
@@ -53,27 +54,59 @@ func TestMuxRoutes(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name  string
-		pprof bool
-		path  string
-		want  int
+		name     string
+		pprof    bool
+		adminAPI bool
+		method   string
+		path     string
+		want     int
 	}{
 		{name: "pprof cmdline enabled", pprof: true, path: "/debug/pprof/cmdline", want: http.StatusOK},
 		{name: "pprof index enabled", pprof: true, path: "/debug/pprof/", want: http.StatusOK},
 		{name: "pprof named profile enabled", pprof: true, path: "/debug/pprof/heap", want: http.StatusOK},
-		{name: "pprof disabled", pprof: false, path: "/debug/pprof/cmdline", want: http.StatusNotFound},
-		{name: "loglevel endpoint removed", pprof: false, path: "/admin/loglevel", want: http.StatusNotFound},
-		{name: "landing page", pprof: false, path: "/", want: http.StatusOK},
+		{name: "pprof disabled", path: "/debug/pprof/cmdline", want: http.StatusNotFound},
+		{name: "loglevel endpoint removed", path: "/admin/loglevel", want: http.StatusNotFound},
+		{name: "landing page", path: "/", want: http.StatusOK},
+		{name: "healthy", path: "/-/healthy", want: http.StatusOK},
+		{name: "healthy head", method: http.MethodHead, path: "/-/healthy", want: http.StatusOK},
+		{name: "ready", path: "/-/ready", want: http.StatusOK},
+		{name: "ready head", method: http.MethodHead, path: "/-/ready", want: http.StatusOK},
+		{name: "log level without admin api", path: "/-/log-level", want: http.StatusNotFound},
+		{
+			name: "log level change without admin api", method: http.MethodPut, path: "/-/log-level",
+			want: http.StatusNotFound,
+		},
+		{name: "log level with admin api", adminAPI: true, path: "/-/log-level", want: http.StatusOK},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mux := newMux(logger, connConfig, flagConfig{MetricsPath: "/metrics", Pprof: tt.pprof})
-			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, tt.path, http.NoBody)
+			ready := new(atomic.Bool)
+			ready.Store(true)
+			cfg := flagConfig{MetricsPath: "/metrics", Pprof: tt.pprof, AdminAPI: tt.adminAPI}
+			mux := newMux(logger, connConfig, cfg, new(slog.LevelVar), ready)
+
+			method := tt.method
+			if method == "" {
+				method = http.MethodGet
+			}
+			req := httptest.NewRequestWithContext(t.Context(), method, tt.path, http.NoBody)
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, req)
 			assert.Equal(t, tt.want, rec.Code)
 		})
 	}
+}
+
+func TestParseFlagsAdminAPI(t *testing.T) {
+	t.Parallel()
+
+	cfg, _, err := parseFlags(nil, io.Discard)
+	require.NoError(t, err)
+	assert.False(t, cfg.AdminAPI)
+
+	cfg, _, err = parseFlags([]string{"--web.enable-admin-api"}, io.Discard)
+	require.NoError(t, err)
+	assert.True(t, cfg.AdminAPI)
 }
