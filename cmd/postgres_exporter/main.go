@@ -93,8 +93,9 @@ func newApp(cfg *flagConfig, usage io.Writer) *kingpin.Application {
 	a.Flag("db.excluded-databases", "Repeat this flag for each database to exclude from monitoring").
 		Default(defaultExcludedDatabases...).StringsVar(&cfg.ExcludedDatabases)
 
-	a.Flag("log.level", "Only log messages with the given severity or above. One of: [debug, info, warn, error]").
-		Default("info").EnumVar(&cfg.LogLevel, "debug", "info", "warn", "error")
+	a.Flag("log.level", "Only log messages with the given severity or above. One of: ["+
+		strings.Join(server.LogLevelNames, ", ")+"]").
+		Default("info").EnumVar(&cfg.LogLevel, server.LogLevelNames...)
 
 	a.Flag("log.format", "Output format of log messages. One of: [logfmt, json]").
 		Default("logfmt").EnumVar(&cfg.LogFormat, "logfmt", "json")
@@ -122,9 +123,9 @@ func parseFlags(args []string, usage io.Writer) (flagConfig, *kingpin.Applicatio
 
 // setupLogger configures the logger.
 func setupLogger(w io.Writer, logLevelVar *slog.LevelVar, logFormat, logLevel string) (*slog.Logger, error) {
-	var level slog.Level
-	if err := level.UnmarshalText([]byte(strings.ToLower(logLevel))); err != nil {
-		return nil, fmt.Errorf("error setting log level: %w", err)
+	level, err := server.ParseLogLevel(logLevel)
+	if err != nil {
+		return nil, fmt.Errorf("log level: %w", err)
 	}
 	logLevelVar.Set(level)
 

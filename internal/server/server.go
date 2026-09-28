@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	pgx "github.com/jackc/pgx/v5"
@@ -73,7 +72,6 @@ type server struct {
 	logger   *slog.Logger
 	listener net.Listener
 	http     *http.Server
-	ready    *atomic.Bool
 }
 
 // newServer builds the connection config and binds the listen address. Binding before serving makes a busy
@@ -97,13 +95,11 @@ func newServer(ctx context.Context, cfg Config, logger *slog.Logger, logLevel *s
 		"address", listener.Addr().String(),
 	)
 
-	ready := new(atomic.Bool)
 	return &server{
 		logger:   logger,
 		listener: listener,
-		ready:    ready,
 		http: &http.Server{
-			Handler:           newMux(logger, connConfig, cfg, logLevel, ready),
+			Handler:           newMux(logger, connConfig, cfg, logLevel),
 			ReadTimeout:       readTimeout,
 			WriteTimeout:      writeTimeout,
 			IdleTimeout:       idleTimeout,
@@ -125,19 +121,16 @@ func (s *server) serve(ctx context.Context) error {
 	errc := make(chan error, 1)
 	go func() { errc <- s.http.Serve(s.listener) }()
 
-	s.ready.Store(true)
 	s.logger.Info("ready")
 
 	select {
 	case err := <-errc:
-		s.ready.Store(false)
 		return fmt.Errorf("serve: %w", err)
 	case <-ctx.Done():
 	}
 
 	s.logger.Info("shutting down server - received signal",
 		errorKey, ctx.Err())
-	s.ready.Store(false)
 
 	// ctx is already canceled; shutdown gets its own deadline for in-flight requests.
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
@@ -190,13 +183,11 @@ func newConnConfig(dataSource string, logger *slog.Logger) (*pgx.ConnConfig, err
 
 // newMux registers the HTTP endpoints. The profiling endpoints exist only with --web.enable-pprof and the
 // admin endpoints only with --web.enable-admin-api.
-func newMux(logger *slog.Logger, connConfig *pgx.ConnConfig, cfg Config, logLevel *slog.LevelVar,
-	ready *atomic.Bool,
-) *http.ServeMux {
+func newMux(logger *slog.Logger, connConfig *pgx.ConnConfig, cfg Config, logLevel *slog.LevelVar) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle(cfg.MetricsPath, metricsHandler(logger, connConfig, cfg))
-	mux.Handle("GET "+healthyPath, healthyHandler(logger))
-	mux.Handle("GET "+readyPath, readyHandler(logger, ready))
+	mux.Handle(healthyPath, allowMethods(healthyHandler(logger), http.MethodGet, http.MethodHead))
+	mux.Handle(readyPath, allowMethods(readyHandler(logger), http.MethodGet, http.MethodHead))
 	mux.Handle("/", catchHandler(logger, cfg.MetricsPath))
 
 	if cfg.AdminAPI {

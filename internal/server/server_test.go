@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"sync/atomic"
 	"testing"
 
 	pgx "github.com/jackc/pgx/v5"
@@ -37,6 +36,8 @@ func TestMuxRoutes(t *testing.T) {
 		{name: "healthy head", method: http.MethodHead, path: "/-/healthy", want: http.StatusOK},
 		{name: "ready", path: "/-/ready", want: http.StatusOK},
 		{name: "ready head", method: http.MethodHead, path: "/-/ready", want: http.StatusOK},
+		{name: "healthy refuses other methods", method: http.MethodPost, path: "/-/healthy", want: http.StatusMethodNotAllowed},
+		{name: "ready refuses other methods", method: http.MethodPost, path: "/-/ready", want: http.StatusMethodNotAllowed},
 		{name: "log level without admin api", path: "/-/log-level", want: http.StatusNotFound},
 		{
 			name: "log level change without admin api", method: http.MethodPut, path: "/-/log-level",
@@ -48,10 +49,8 @@ func TestMuxRoutes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ready := new(atomic.Bool)
-			ready.Store(true)
 			cfg := Config{MetricsPath: "/metrics", Pprof: tt.pprof, AdminAPI: tt.adminAPI}
-			mux := newMux(logger, connConfig, cfg, new(slog.LevelVar), ready)
+			mux := newMux(logger, connConfig, cfg, new(slog.LevelVar))
 
 			method := tt.method
 			if method == "" {

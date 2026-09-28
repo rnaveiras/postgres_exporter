@@ -161,21 +161,24 @@ Modelled on the [Prometheus management API](https://prometheus.io/docs/prometheu
 | Endpoint | Methods | Enabled by | Description |
 | -------- | ------- | ---------- | ----------- |
 | `/-/healthy` | `GET`, `HEAD` | always | 200 while the process serves HTTP |
-| `/-/ready` | `GET`, `HEAD` | always | 200 once the listener is bound, 503 after shutdown starts |
+| `/-/ready` | `GET`, `HEAD` | always | 200 while the process serves HTTP; the exporter has no startup work to wait for |
 | `/-/log-level` | `GET`, `HEAD`, `PUT`, `POST` | `--web.enable-admin-api` | Reads or changes the log level at runtime |
 | `/debug/pprof/` | `GET` | `--web.enable-pprof` | Go runtime profiling |
 
 `/-/healthy` and `/-/ready` never query Postgres, so point probes at them instead of the metrics path. A probe that
 failed with Postgres would restart or unroute the exporter exactly when `postgres_up 0` matters.
 
-Change the log level, permanently or for a limited time (at most 24h), after which it reverts:
+Change the log level, permanently or for a limited time (at most 24h), after which it reverts. Changes must be
+sent as `Content-Type: application/json`; other content types get 415, so a web page on another origin cannot
+change the level through a visitor's browser:
 
 ```
-curl -X PUT -d '{"level":"debug"}' http://localhost:9187/-/log-level
-curl -X PUT -d '{"level":"debug","for":"15m"}' http://localhost:9187/-/log-level
+curl -X PUT -H 'Content-Type: application/json' -d '{"level":"debug"}' http://localhost:9187/-/log-level
+curl -X PUT -H 'Content-Type: application/json' -d '{"level":"debug","for":"15m"}' http://localhost:9187/-/log-level
 curl http://localhost:9187/-/log-level
 {"level":"debug","revert_to":"info","revert_at":"2026-09-27T12:37:00Z"}
 ```
 
-Every change is logged at `warn` with the caller's address. The admin and pprof endpoints have no authentication:
+Every change and every expiry is logged with the caller's address, at `warn` or at the configured level when that
+is higher, so the record is never filtered out by the change it records. The admin and pprof endpoints have no authentication:
 enable them only where the listen address is reachable by trusted clients.

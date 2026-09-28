@@ -86,11 +86,15 @@ func newTestServer(t *testing.T) *server {
 	return s
 }
 
+// probeClient opens a connection per request. A pooled client can leave a spare connection that never sends
+// a request, and Shutdown waits up to 5s for such a connection, which would make the cancel check flaky.
+var probeClient = &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
+
 // get returns the status code of a GET to url, or 0 when the request fails.
 func get(c *assert.CollectT, url string) int {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
 	require.NoError(c, err)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := probeClient.Do(req)
 	if err != nil {
 		return 0
 	}

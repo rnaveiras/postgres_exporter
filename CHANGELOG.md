@@ -28,7 +28,8 @@ PostgreSQL 14 to 18 are supported. Every collector now works on PostgreSQL 15, 1
 * [FEATURE] `postgres_stat_checkpointer_*` collector for PostgreSQL 17+, with `num_done` and `slru_written` on 18+.
 * [FEATURE] `/-/healthy` and `/-/ready` endpoints for liveness and readiness probes. They never query Postgres.
 * [FEATURE] `--web.enable-admin-api` flag (default `false`) serves `/-/log-level`: `GET` returns the log level,
-  `PUT`/`POST` `{"level":"debug","for":"15m"}` changes it, reverting after `for` when set. It has no authentication.
+  `PUT`/`POST` `{"level":"debug","for":"15m"}` with `Content-Type: application/json` changes it, reverting after `for`
+  when set. It has no authentication.
 * [FEATURE] `--compat.legacy-names` flag (default `true`) to keep emitting deprecated metric names.
 * [ENHANCEMENT] `postgres_info` gains the `version_num` (`server_version_num`) and `platform` (`community`, `rds`,
   `aurora`, `cloudsql`, `azure_flexible`) labels; `version` is the server's `server_version` without the packager

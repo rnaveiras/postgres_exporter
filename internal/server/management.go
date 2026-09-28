@@ -6,14 +6,17 @@ package server
 // at runtime and is served only with --web.enable-admin-api.
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -28,12 +31,23 @@ const (
 	maxLogLevelBody = 1 << 10
 )
 
-// logLevels are the levels accepted by --log.level and /-/log-level.
-var logLevels = map[string]slog.Level{
-	"debug": slog.LevelDebug,
-	"info":  slog.LevelInfo,
-	"warn":  slog.LevelWarn,
-	"error": slog.LevelError,
+// LogLevelNames are the levels accepted by --log.level and /-/log-level, from most to least verbose.
+var LogLevelNames = []string{"debug", "info", "warn", "error"}
+
+// errLogLevel lists the accepted names, so the flag and the endpoint report the same choices.
+var errLogLevel = errors.New("level must be one of: " + strings.Join(LogLevelNames, ", "))
+
+// ParseLogLevel returns the level for one of LogLevelNames, in any case. It rejects the offsets slog itself
+// accepts, such as "info+2".
+func ParseLogLevel(name string) (slog.Level, error) {
+	if !slices.Contains(LogLevelNames, strings.ToLower(name)) {
+		return 0, errLogLevel
+	}
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(name)); err != nil {
+		return 0, errLogLevel
+	}
+	return level, nil
 }
 
 func levelName(l slog.Level) string {
@@ -44,25 +58,36 @@ func levelName(l slog.Level) string {
 // reports that, and a liveness probe that failed with Postgres would restart a healthy exporter.
 func healthyHandler(logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeText(logger, w, http.StatusOK, "Postgres Exporter is Healthy.\n")
+		writeText(logger, w, "Postgres Exporter is Healthy.\n")
 	})
 }
 
-// readyHandler answers 200 once the listener is bound and 503 after shutdown starts. It does not check
-// Postgres: a readiness probe that failed with Postgres would stop scrapes, and with them postgres_up 0.
-func readyHandler(logger *slog.Logger, ready *atomic.Bool) http.Handler {
+// readyHandler answers 200 whenever the process serves HTTP. The exporter has no startup work to wait for,
+// and the listener only accepts connections while serving, so there is no not-ready state a probe could see.
+// It does not check Postgres: a readiness probe that failed with Postgres would stop scrapes, and with them
+// postgres_up 0.
+func readyHandler(logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		if !ready.Load() {
-			writeText(logger, w, http.StatusServiceUnavailable, "Service Unavailable\n")
+		writeText(logger, w, "Postgres Exporter is Ready.\n")
+	})
+}
+
+// allowMethods answers other methods with 405 and the Allow header instead of letting them fall through to
+// the catch-all 404.
+func allowMethods(h http.Handler, methods ...string) http.Handler {
+	allow := strings.Join(methods, ", ")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if slices.Contains(methods, r.Method) {
+			h.ServeHTTP(w, r)
 			return
 		}
-		writeText(logger, w, http.StatusOK, "Postgres Exporter is Ready.\n")
+		w.Header().Set("Allow", allow)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	})
 }
 
-func writeText(logger *slog.Logger, w http.ResponseWriter, code int, body string) {
+func writeText(logger *slog.Logger, w http.ResponseWriter, body string) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(code)
 	if _, err := io.WriteString(w, body); err != nil {
 		logger.Debug("write response", slog.Any(errorKey, err))
 	}
@@ -105,7 +130,10 @@ type logLevelRequest struct {
 func (c *logLevelControl) state() logLevelState {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	return c.stateLocked()
+}
 
+func (c *logLevelControl) stateLocked() logLevelState {
 	s := logLevelState{Level: levelName(c.level.Level())}
 	if !c.revertAt.IsZero() {
 		at := c.revertAt.UTC()
@@ -115,9 +143,10 @@ func (c *logLevelControl) state() logLevelState {
 	return s
 }
 
-// set changes the level, for d when d > 0 and permanently otherwise, and returns the previous level. Any
+// set changes the level, for d when d > 0 and permanently otherwise, and returns the previous level and the
+// resulting state, read under the same lock so a concurrent change cannot show up in this response. Any
 // pending revert is canceled.
-func (c *logLevelControl) set(level slog.Level, d time.Duration) slog.Level {
+func (c *logLevelControl) set(ctx context.Context, level slog.Level, d time.Duration) (slog.Level, logLevelState) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -132,15 +161,17 @@ func (c *logLevelControl) set(level slog.Level, d time.Duration) slog.Level {
 
 	if d <= 0 {
 		c.base = level
-		return old
+		return old, c.stateLocked()
 	}
 	gen := c.gen
 	c.revertAt = time.Now().Add(d)
-	c.timer = time.AfterFunc(d, func() { c.revert(gen) })
-	return old
+	// The revert outlives the request that scheduled it.
+	revertCtx := context.WithoutCancel(ctx)
+	c.timer = time.AfterFunc(d, func() { c.revert(revertCtx, gen) })
+	return old, c.stateLocked()
 }
 
-func (c *logLevelControl) revert(gen uint64) {
+func (c *logLevelControl) revert(ctx context.Context, gen uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -151,16 +182,22 @@ func (c *logLevelControl) revert(gen uint64) {
 	c.level.Set(c.base)
 	c.timer = nil
 	c.revertAt = time.Time{}
-	c.logger.Warn("temporary log level expired",
+	c.logger.Log(ctx, auditLevel(old, c.base), "temporary log level expired",
 		"from", levelName(old),
 		"to", levelName(c.base))
+}
+
+// auditLevel is the level a log level change is recorded at: at least warn, and never below the level in
+// force before or after the change, so the record is not filtered out by the change it records.
+func auditLevel(from, to slog.Level) slog.Level {
+	return max(slog.LevelWarn, from, to)
 }
 
 // ServeHTTP answers GET and HEAD with the current state, and PUT and POST with a change.
 func (c *logLevelControl) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
-		c.writeState(w)
+		c.writeState(w, c.state())
 	case http.MethodPut, http.MethodPost:
 		c.change(w, r)
 	default:
@@ -170,6 +207,14 @@ func (c *logLevelControl) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *logLevelControl) change(w http.ResponseWriter, r *http.Request) {
+	// A browser sends text/plain and form bodies cross-origin without a preflight; requiring JSON makes a
+	// page on another origin unable to change the level through a visitor's browser.
+	if mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil ||
+		mediaType != "application/json" {
+		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxLogLevelBody))
 	dec.DisallowUnknownFields()
 	var req logLevelRequest
@@ -177,10 +222,14 @@ func (c *logLevelControl) change(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		http.Error(w, "invalid request body: one JSON object expected", http.StatusBadRequest)
+		return
+	}
 
-	level, ok := logLevels[strings.ToLower(req.Level)]
-	if !ok {
-		http.Error(w, "level must be one of: debug, info, warn, error", http.StatusBadRequest)
+	level, err := ParseLogLevel(req.Level)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -195,7 +244,7 @@ func (c *logLevelControl) change(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	old := c.set(level, d)
+	old, state := c.set(r.Context(), level, d)
 	attrs := []any{
 		"from", levelName(old),
 		"to", levelName(level),
@@ -204,14 +253,14 @@ func (c *logLevelControl) change(w http.ResponseWriter, r *http.Request) {
 	if d > 0 {
 		attrs = append(attrs, "for", d.String())
 	}
-	c.logger.Warn("log level changed", attrs...)
+	c.logger.Log(r.Context(), auditLevel(old, level), "log level changed", attrs...)
 
-	c.writeState(w)
+	c.writeState(w, state)
 }
 
-func (c *logLevelControl) writeState(w http.ResponseWriter) {
+func (c *logLevelControl) writeState(w http.ResponseWriter, state logLevelState) {
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(c.state()); err != nil {
+	if err := json.NewEncoder(w).Encode(state); err != nil {
 		c.logger.Debug("write response", slog.Any(errorKey, err))
 	}
 }
